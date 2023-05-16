@@ -15,5 +15,7 @@ Cargo.lock
 
 
 # Added by cargo
-
 /target
+
+# Because I'm working on MacOS
+.DS_Store
