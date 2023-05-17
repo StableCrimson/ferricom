@@ -1,3 +1,20 @@
+
+/*
+
+    Aliases for the flags in the 6502 status register.
+    More information on these flags can be found here: https://www.nesdev.org/wiki/Status_flags
+
+*/
+// const CARRY_FLAG: u8 =              0b0000_0001;
+const ZERO_FLAG: u8 =               0b0000_0010;
+// const INTERRUPT_DISABLE_FLAG: u8 =  0b0000_0100;
+// const DECIMAL_FLAG: u8 =            0b0000_1000;
+
+/* Bits 4 and 5 are unused */
+
+// const OVERFLOW_FLAG: u8 =           0b0100_0000;
+const NEGATIVE_FLAG: u8 =           0b1000_0000;
+
 pub struct Cpu {
 
 pc: u16,
@@ -99,15 +116,15 @@ impl Cpu {
     fn set_negative_and_zero_bits(&mut self, value: u8) {
 
         if value == 0 {
-            self.status |= 0b0000_0010;
+            self.status |= ZERO_FLAG;
         } else {
-            self.status &= 0b1111_1101;
+            self.status &= !ZERO_FLAG;
         }
 
         if value & 0b1000_0000 != 0 {
-            self.status |= 0b1000_0000;
+            self.status |= NEGATIVE_FLAG;
         } else {
-            self.status &= 0b0111_1111;
+            self.status &= !NEGATIVE_FLAG;
         }
 
     }
@@ -162,11 +179,11 @@ mod tests {
         let mut cpu = Cpu::new();
 
         cpu.set_negative_and_zero_bits(cpu.acc);
-        assert!(cpu.status & 0b0000_0010 > 0);
+        assert!(cpu.status & ZERO_FLAG > 0);
 
         cpu.acc = 130;
         cpu.set_negative_and_zero_bits(cpu.acc);
-        assert!(cpu.status & 0b1000_0000 > 0);
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
 
         cpu.acc = 16;
         cpu.set_negative_and_zero_bits(cpu.acc);
@@ -197,7 +214,7 @@ mod tests {
         cpu.interpret(program);
 
         assert_eq!(cpu.x, 156);
-        assert!(cpu.status & 0b1000_0000 > 0);
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
 
     }
 
