@@ -5,14 +5,14 @@
     More information on these flags can be found here: https://www.nesdev.org/wiki/Status_flags
 
 */
-// const CARRY_FLAG: u8 =              0b0000_0001;
+const CARRY_FLAG: u8 =              0b0000_0001;
 const ZERO_FLAG: u8 =               0b0000_0010;
-// const INTERRUPT_DISABLE_FLAG: u8 =  0b0000_0100;
-// const DECIMAL_FLAG: u8 =            0b0000_1000;
+const INTERRUPT_DISABLE_FLAG: u8 =  0b0000_0100;
+const DECIMAL_FLAG: u8 =            0b0000_1000;
 
 /* Bits 4 and 5 are unused */
 
-// const OVERFLOW_FLAG: u8 =           0b0100_0000;
+const OVERFLOW_FLAG: u8 =           0b0100_0000;
 const NEGATIVE_FLAG: u8 =           0b1000_0000;
 
 pub struct Cpu {
@@ -89,21 +89,58 @@ impl Cpu {
                 /* LDA - Load Accumulator */
                 0xA9 => { // Immediate
                     
-                    let data: u8 = program[self.pc as usize];
+                    // let data = self.mem_read_u8(self.pc);
+                    // self.acc = data;
 
-                    // TODO: Add a method for reading a byte
-                    self.acc = data;
+                    let data = program[self.pc as usize]
+;                   self.acc = data;
                     self.pc += 1;
-
+                    
                     self.set_negative_and_zero_bits(self.acc);
 
                 },
 
                 /* TAX - Transfer Accumulator to X */
-                0xAA => { // Implied
+                0xAA => {
                     self.x = self.acc;
                     self.set_negative_and_zero_bits(self.x);
                 },
+
+                /* CLC - Clear Carry Flag */
+                0x18 => self.clear_flag(CARRY_FLAG),
+
+                /* CLD - Clear Decimal Mode */
+                0xD8 => self.clear_flag(DECIMAL_FLAG),
+
+                /* CLI - Clear Interrupt Disable */
+                0x58 => self.clear_flag(INTERRUPT_DISABLE_FLAG),
+
+                /* CLV - Clear Overflow Flag */
+                0xB8 => self.clear_flag(OVERFLOW_FLAG),
+
+                /* DEX - Decrement the X Register */
+                0xCA => {
+                    Cpu::decrement_register(&mut self.x);
+                    self.set_negative_and_zero_bits(self.x);
+                },
+
+                /* DEY - Decrement the Y Register */
+                0x88 => {
+                    Cpu::decrement_register(&mut self.y);
+                    self.set_negative_and_zero_bits(self.y);
+                },
+
+                /* INX - Increment the X Register */
+                0xE8 => {
+                    Cpu::increment_register(&mut self.x);
+                    self.set_negative_and_zero_bits(self.x);
+                },
+
+                /* INY - Increment the Y Register */
+                0xC8 => {
+                    Cpu::increment_register(&mut self.y);
+                    self.set_negative_and_zero_bits(self.y);
+                }
 
                 _ => todo!("Instruction invalid or unimplemented")
 
@@ -129,6 +166,38 @@ impl Cpu {
 
     }
 
+    // TODO Load the program into memory instead of just accessing it seperately
+    // fn mem_read_u8(&mut self, addr: u16) -> u8 {
+    //     let data = self.memory[addr as usize];
+    //     self.pc += 1;
+    //     data
+    // }
+
+    // fn mem_write_u8(&mut self, addr: u16, data: u8) {
+    //     self.memory[addr as usize] = data;
+    //     self.pc += 1;
+    // }
+
+    fn increment_register(register: &mut u8) {
+        if *register == 0xFF {
+            *register = 0;
+        } else {
+            *register += 1;
+        }
+    }
+
+    fn decrement_register(register: &mut u8) {
+        if *register == 0 {
+            *register = 0xFF;
+        } else {
+            *register -= 1;
+        }
+    }
+
+    fn clear_flag(&mut self, flag_alias: u8) {
+        self.status &= !flag_alias;
+    }
+
 }
 
 #[cfg(test)]
@@ -137,7 +206,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_init() {
+    fn test_cpu_init() {
 
         let cpu = Cpu::new();
 
@@ -151,7 +220,7 @@ mod tests {
     }
 
     #[test]
-    fn test_reset() {
+    fn test_cpu_reset() {
 
         let mut cpu = Cpu::new();
 
@@ -174,7 +243,7 @@ mod tests {
     }
 
     #[test]
-    fn test_set_flags() {
+    fn test_set_negative_and_zero_flags() {
 
         let mut cpu = Cpu::new();
 
@@ -188,6 +257,66 @@ mod tests {
         cpu.acc = 16;
         cpu.set_negative_and_zero_bits(cpu.acc);
         assert_eq!(cpu.status, 0);
+
+    }
+
+    #[test]
+    fn test_increment_register () {
+
+        let mut cpu = Cpu::new();
+        cpu.x = 0xFE;
+
+        Cpu::increment_register(&mut cpu.x);
+        assert_eq!(cpu.x, 0xFF);
+
+        Cpu::increment_register(&mut cpu.x);
+        assert_eq!(cpu.x, 0);
+
+    }
+
+    #[test]
+    fn test_decrement_register () {
+
+        let mut cpu = Cpu::new();
+        cpu.x = 1;
+
+        Cpu::decrement_register(&mut cpu.x);
+        assert_eq!(cpu.x, 0);
+
+        Cpu::decrement_register(&mut cpu.x);
+        assert_eq!(cpu.x, 255);
+
+    }
+
+
+    #[test]
+    fn test_clear_flag() {
+
+        let mut cpu = Cpu::new();
+        cpu.status = 0b1111_1111;
+
+        cpu.clear_flag(ZERO_FLAG);
+        assert_eq!(cpu.status, 0b1111_1101);
+
+    }
+
+    #[test]
+    fn test_run_sample_prog_1() {
+
+        /*
+            This program does the following:
+            Load 0xC0 into the accumulator
+            Transfer to the X register
+            Increment X
+         */
+
+        let mut cpu = Cpu::new();
+        let program = vec![0xA9, 0xC0, 0xAA, 0xE8, 0x00];
+
+        cpu.interpret(program);
+
+        assert_eq!(cpu.acc, 0xC0);
+        assert_eq!(cpu.x, 0xC1);
 
     }
 
@@ -215,6 +344,122 @@ mod tests {
 
         assert_eq!(cpu.x, 156);
         assert!(cpu.status & NEGATIVE_FLAG > 0);
+
+    }
+
+    #[test]
+    fn test_inx () {
+
+        let mut cpu = Cpu::new();
+        cpu.x = 127;
+        cpu.set_negative_and_zero_bits(cpu.x);
+        assert_eq!(cpu.status & NEGATIVE_FLAG, 0);
+
+        let program = vec![0xE8, 0x00];
+        cpu.interpret(program);
+
+        assert_eq!(cpu.x, 128);
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+
+    }
+
+    #[test]
+    fn test_iny () {
+
+        let mut cpu = Cpu::new();
+        cpu.y = 127;
+        cpu.set_negative_and_zero_bits(cpu.y);
+        assert_eq!(cpu.status & NEGATIVE_FLAG, 0);
+
+        let program = vec![0xC8, 0x00];
+        cpu.interpret(program);
+
+        assert_eq!(cpu.y, 128);
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+
+    }
+
+    #[test]
+    fn test_dex () {
+
+        let mut cpu = Cpu::new();
+        cpu.x = 128;
+        cpu.set_negative_and_zero_bits(cpu.x);
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+
+        let program = vec![0xCA, 0x00];
+        cpu.interpret(program);
+
+        assert_eq!(cpu.x, 127);
+        assert_eq!(cpu.status & NEGATIVE_FLAG, 0);
+
+    }
+
+    #[test]
+    fn test_dey () {
+
+        let mut cpu = Cpu::new();
+        cpu.y = 128;
+        cpu.set_negative_and_zero_bits(cpu.y);
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+
+        let program = vec![0x88, 0x00];
+        cpu.interpret(program);
+
+        assert_eq!(cpu.y, 127);
+        assert_eq!(cpu.status & NEGATIVE_FLAG, 0);
+
+    }
+
+    #[test]
+    fn test_clc() {
+
+        let mut cpu = Cpu::new();
+        cpu.status = 0b1111_1111;
+
+        let program = vec![0x18, 0x00];
+        cpu.interpret(program);
+
+        assert_eq!(cpu.status, !CARRY_FLAG);
+
+    }
+
+    #[test]
+    fn test_cld() {
+
+        let mut cpu = Cpu::new();
+        cpu.status = 0b1111_1111;
+
+        let program = vec![0xD8, 0x00];
+        cpu.interpret(program);
+
+        assert_eq!(cpu.status, !DECIMAL_FLAG);
+
+    }
+
+    #[test]
+    fn test_cli() {
+
+        let mut cpu = Cpu::new();
+        cpu.status = 0b1111_1111;
+
+        let program = vec![0x58, 0x00];
+        cpu.interpret(program);
+
+        assert_eq!(cpu.status, !INTERRUPT_DISABLE_FLAG);
+
+    }
+
+    #[test]
+    fn test_clv() {
+
+        let mut cpu = Cpu::new();
+        cpu.status = 0b1111_1111;
+
+        let program = vec![0xB8, 0x00];
+        cpu.interpret(program);
+
+        assert_eq!(cpu.status, !OVERFLOW_FLAG);
 
     }
 
