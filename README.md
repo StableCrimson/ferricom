@@ -8,8 +8,8 @@ If this project helps you write your own emulator or learn Rust, then even bette
 
 ## Currently Implemented Instructions
 
-| Name | Opcode | Descrition |
-| ---- | ------ | ---------- |
-| BRK | `0x00` | Force Interrupt |
+| Name          | Opcode | Descrition                                                |
+| :------------ | :----: | --------------------------------------------------------- |
+| BRK           | `0x00` | Force Interrupt                                           |
 | LDA Immediate | `0xA9` | Load value into the accumulator with immediate addressing |
-| TAX | `0xAA` | Copy value from accumulator into the X register |
+| TAX           | `0xAA` | Copy value from accumulator into the X register           |

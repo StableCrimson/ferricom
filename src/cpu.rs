@@ -38,6 +38,12 @@ impl Cpu {
         self.status = 0;
     }
 
+    /*
+        The reason I have this method instead of just deriving debug is
+        because, as of right now, memory is a part of the struct. So printing
+        with debug would flood the console with the contents of the NES' RAM.
+        TODO: Separate the memory from the CPU struct
+     */
     pub fn print_stats(&self) {
 
         println!("Program counter:  {}", self.pc);
@@ -80,7 +86,7 @@ impl Cpu {
                 0xAA => { // Implied
                     self.x = self.acc;
                     self.set_negative_and_zero_bits(self.x);
-                }
+                },
 
                 _ => todo!("Instruction invalid or unimplemented")
 
