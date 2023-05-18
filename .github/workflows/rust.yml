@@ -1,4 +1,4 @@
-name: Build, Tests, and Coverage
+name: Unit Tests and Coverage
 
 on:
   push:
@@ -18,8 +18,5 @@ jobs:
     - uses: actions/checkout@v3
     - name: Install tarpaulin
       run: cargo install cargo-tarpaulin
-    - name: Build
-      run: cargo build --verbose
     - name: Run tests
-      # TODO: Ignoring main right now because it doesn't do anything important at the moment
-      run: cargo tarpaulin --fail-under 100 --exclude-files src/main.rs
+      run: cargo tarpaulin --fail-under 100
