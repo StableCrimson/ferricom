@@ -61,10 +61,13 @@ impl Cpu {
         self.y = 0;
         self.status = 0;
     }
+    
     // TODO: Separate the memory from the CPU struct
     /// The reason I have this method instead of just deriving debug is
     /// because, as of right now, memory is a part of the CPU struct. So printing
     /// with debug would flood the console with the contents of the NES' RAM.
+
+    #[cfg(not(tarpaulin_include))]
     pub fn print_stats(&self) {
 
         println!("Program counter:  {}", self.pc);

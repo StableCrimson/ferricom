@@ -1,4 +1,4 @@
-name: Rust
+name: Unit Tests and Coverage
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-    - name: Build
-      run: cargo build --verbose
+    - name: Install tarpaulin
+      run: cargo install cargo-tarpaulin
     - name: Run tests
-      run: cargo test --verbose
+      run: cargo tarpaulin --fail-under 100

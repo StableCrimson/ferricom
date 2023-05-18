@@ -2,6 +2,8 @@ mod cpu;
 
 use cpu::Cpu;
 
+#[cfg(not(tarpaulin_include))]
+
 fn main() {
 
     let mut cpu = Cpu::new();
