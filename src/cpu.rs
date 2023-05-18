@@ -1,14 +1,12 @@
 
 /*
-
     Aliases for the flags in the 6502 status register.
     More information on these flags can be found here: https://www.nesdev.org/wiki/Status_flags
-
 */
 const CARRY_FLAG: u8 =              0b0000_0001;
 const ZERO_FLAG: u8 =               0b0000_0010;
 const INTERRUPT_DISABLE_FLAG: u8 =  0b0000_0100;
-const DECIMAL_FLAG: u8 =            0b0000_1000;
+const DECIMAL_MODE_FLAG: u8 =            0b0000_1000;
 
 /* Bits 4 and 5 are unused */
 
@@ -17,13 +15,13 @@ const NEGATIVE_FLAG: u8 =           0b1000_0000;
 
 pub struct Cpu {
 
-pc: u16,
-sp: u16,
-acc: u8,
-x: u8,
-y: u8,
-status: u8,
-memory: [u8; 0xFFFF]
+    pc: u16,
+    sp: u16,
+    acc: u8,
+    x: u8,
+    y: u8,
+    status: u8,
+    memory: [u8; 0xFFFF]
 
 }
 
@@ -57,7 +55,7 @@ impl Cpu {
 
     /*
         The reason I have this method instead of just deriving debug is
-        because, as of right now, memory is a part of the struct. So printing
+        because, as of right now, memory is a part of the CPU struct. So printing
         with debug would flood the console with the contents of the NES' RAM.
         TODO: Separate the memory from the CPU struct
      */
@@ -74,7 +72,7 @@ impl Cpu {
 
     }
 
-    pub fn interpret(&mut self, program: Vec<u8>) {
+    pub fn run(&mut self, program: Vec<u8>) {
 
         loop {
 
@@ -89,13 +87,15 @@ impl Cpu {
                 /* LDA - Load Accumulator */
                 0xA9 => { // Immediate
                     
+                    // TODO: When we can load the program into memory, switch to the mem_read_u8() method instead
                     // let data = self.mem_read_u8(self.pc);
                     // self.acc = data;
 
+                    // TODO: Remove old implementation when the above todo is addressed
                     let data = program[self.pc as usize]
 ;                   self.acc = data;
                     self.pc += 1;
-                    
+
                     self.set_negative_and_zero_bits(self.acc);
 
                 },
@@ -110,7 +110,7 @@ impl Cpu {
                 0x18 => self.clear_flag(CARRY_FLAG),
 
                 /* CLD - Clear Decimal Mode */
-                0xD8 => self.clear_flag(DECIMAL_FLAG),
+                0xD8 => self.clear_flag(DECIMAL_MODE_FLAG),
 
                 /* CLI - Clear Interrupt Disable */
                 0x58 => self.clear_flag(INTERRUPT_DISABLE_FLAG),
@@ -142,7 +142,7 @@ impl Cpu {
                     self.set_negative_and_zero_bits(self.y);
                 }
 
-                _ => todo!("Instruction invalid or unimplemented")
+                _ => todo!("Opcode [0x{:0X}] is invalid or unimplemented", opcode)
 
             };
 
@@ -166,17 +166,38 @@ impl Cpu {
 
     }
 
-    // TODO Load the program into memory instead of just accessing it seperately
-    // fn mem_read_u8(&mut self, addr: u16) -> u8 {
-    //     let data = self.memory[addr as usize];
-    //     self.pc += 1;
-    //     data
-    // }
+    fn mem_read_u8(&mut self, addr: u16) -> u8 {
+        let data = self.memory[addr as usize];
+        self.pc += 1;
+        data
+    }
 
-    // fn mem_write_u8(&mut self, addr: u16, data: u8) {
-    //     self.memory[addr as usize] = data;
-    //     self.pc += 1;
-    // }
+    fn mem_read_u16(&mut self, addr: u16) -> u16 {
+
+        let lsb = self.memory[addr as usize];
+        let msb = self.memory[(addr+1) as usize];
+
+        let data: u16 = ((msb as u16) << 8) | lsb as u16;
+        self.pc += 2;
+        data
+
+    }
+
+    fn mem_write_u8(&mut self, addr: u16, data: u8) {
+        self.memory[addr as usize] = data;
+        self.pc += 1;
+    }
+
+    fn mem_write_u16(&mut self, addr: u16, data: u16) {
+
+        let msb = (data >> 8) as u8;
+        let lsb = data as u8;
+
+        self.memory[addr as usize] = lsb;
+        self.memory[(addr+1) as usize] = msb;
+        self.pc += 2;
+
+    }
 
     fn increment_register(register: &mut u8) {
         if *register == 0xFF {
@@ -288,6 +309,53 @@ mod tests {
 
     }
 
+    #[test]
+    fn test_mem_read_u8 () {
+
+        let mut cpu = Cpu::new();
+        cpu.memory[162] = 0xAF;
+
+        assert_eq!(cpu.mem_read_u8(162), 0xAF);
+        assert_eq!(cpu.pc, 1);
+
+    }
+
+    #[test]
+    fn test_mem_read_u16 () {
+
+        let mut cpu = Cpu::new();
+        cpu.memory[162] = 0x80;
+        cpu.memory[163] = 0x08;
+
+        assert_eq!(cpu.mem_read_u16(162), 0x0880);
+        assert_eq!(cpu.pc, 2);
+
+    }
+
+    #[test]
+    fn test_mem_write_u8 () {
+
+        let mut cpu = Cpu::new();
+        let data: u8 = 0x12;
+        cpu.mem_write_u8(162, data);
+
+        assert_eq!(cpu.memory[162], 0x12);
+        assert_eq!(cpu.pc, 1);
+
+    }
+
+    #[test]
+    fn test_mem_write_u16 () {
+
+        let mut cpu = Cpu::new();
+        let data: u16 = 0x1234;
+        cpu.mem_write_u16(162, data);
+
+        assert_eq!(cpu.memory[162], 0x34);
+        assert_eq!(cpu.memory[163], 0x12);
+        assert_eq!(cpu.pc, 2);
+
+    }
 
     #[test]
     fn test_clear_flag() {
@@ -313,7 +381,7 @@ mod tests {
         let mut cpu = Cpu::new();
         let program = vec![0xA9, 0xC0, 0xAA, 0xE8, 0x00];
 
-        cpu.interpret(program);
+        cpu.run(program);
 
         assert_eq!(cpu.acc, 0xC0);
         assert_eq!(cpu.x, 0xC1);
@@ -327,7 +395,7 @@ mod tests {
 
         // Negative bit is set
         let program = vec![0xA9, 156, 0x00];
-        cpu.interpret(program);
+        cpu.run(program);
 
         assert_eq!(cpu.acc, 156);
 
@@ -340,7 +408,7 @@ mod tests {
         cpu.acc = 156;
 
         let program = vec![0xAA, 0x00];
-        cpu.interpret(program);
+        cpu.run(program);
 
         assert_eq!(cpu.x, 156);
         assert!(cpu.status & NEGATIVE_FLAG > 0);
@@ -356,7 +424,7 @@ mod tests {
         assert_eq!(cpu.status & NEGATIVE_FLAG, 0);
 
         let program = vec![0xE8, 0x00];
-        cpu.interpret(program);
+        cpu.run(program);
 
         assert_eq!(cpu.x, 128);
         assert!(cpu.status & NEGATIVE_FLAG > 0);
@@ -372,7 +440,7 @@ mod tests {
         assert_eq!(cpu.status & NEGATIVE_FLAG, 0);
 
         let program = vec![0xC8, 0x00];
-        cpu.interpret(program);
+        cpu.run(program);
 
         assert_eq!(cpu.y, 128);
         assert!(cpu.status & NEGATIVE_FLAG > 0);
@@ -388,7 +456,7 @@ mod tests {
         assert!(cpu.status & NEGATIVE_FLAG > 0);
 
         let program = vec![0xCA, 0x00];
-        cpu.interpret(program);
+        cpu.run(program);
 
         assert_eq!(cpu.x, 127);
         assert_eq!(cpu.status & NEGATIVE_FLAG, 0);
@@ -404,7 +472,7 @@ mod tests {
         assert!(cpu.status & NEGATIVE_FLAG > 0);
 
         let program = vec![0x88, 0x00];
-        cpu.interpret(program);
+        cpu.run(program);
 
         assert_eq!(cpu.y, 127);
         assert_eq!(cpu.status & NEGATIVE_FLAG, 0);
@@ -418,7 +486,7 @@ mod tests {
         cpu.status = 0b1111_1111;
 
         let program = vec![0x18, 0x00];
-        cpu.interpret(program);
+        cpu.run(program);
 
         assert_eq!(cpu.status, !CARRY_FLAG);
 
@@ -431,9 +499,9 @@ mod tests {
         cpu.status = 0b1111_1111;
 
         let program = vec![0xD8, 0x00];
-        cpu.interpret(program);
+        cpu.run(program);
 
-        assert_eq!(cpu.status, !DECIMAL_FLAG);
+        assert_eq!(cpu.status, !DECIMAL_MODE_FLAG);
 
     }
 
@@ -444,7 +512,7 @@ mod tests {
         cpu.status = 0b1111_1111;
 
         let program = vec![0x58, 0x00];
-        cpu.interpret(program);
+        cpu.run(program);
 
         assert_eq!(cpu.status, !INTERRUPT_DISABLE_FLAG);
 
@@ -457,7 +525,7 @@ mod tests {
         cpu.status = 0b1111_1111;
 
         let program = vec![0xB8, 0x00];
-        cpu.interpret(program);
+        cpu.run(program);
 
         assert_eq!(cpu.status, !OVERFLOW_FLAG);
 
