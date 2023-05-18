@@ -21,9 +21,10 @@ enum AddressingMode {
     Absolute,
     AbsoluteX,
     AbsoluteY,
+    Indirect,
+    IndirectX,
+    IndirectY,
     Immediate,
-    Relative,
-    Indirect
 }
 
 pub struct Cpu {
@@ -195,8 +196,32 @@ impl Cpu {
             AddressingMode::ZeroPage => self.mem_read_u8(self.pc) as u16,
             AddressingMode::ZeroPageX => self.mem_read_u8(self.pc).wrapping_add(self.x) as u16,
             AddressingMode::ZeroPageY => self.mem_read_u8(self.pc).wrapping_add(self.y) as u16,
-            _ => todo!("Addressing mode [{:?}] is unimplemented", addressing_mode)
+            AddressingMode::Indirect => {
+                let target_addr = self.mem_read_u16(self.pc);
+                self.mem_read_u16(target_addr)
+            },
+            AddressingMode::IndirectX => {
 
+                let initial_read_addr = self.mem_read_u8(self.pc);
+                let offset_addr = initial_read_addr.wrapping_add(self.x);
+
+                let lsb = self.mem_read_u8(offset_addr as u16);
+                let msb = self.mem_read_u8(offset_addr.wrapping_add(1) as u16);
+
+                (msb as u16) << 8 | lsb as u16
+
+            },
+            AddressingMode::IndirectY => {
+
+                let initial_read_addr = self.mem_read_u8(self.pc);
+
+                let lsb = self.mem_read_u8(initial_read_addr as u16);
+                let msb = self.mem_read_u8(initial_read_addr.wrapping_add(1) as u16);
+                let target_addr = (msb as u16) << 8 | lsb as u16;
+
+                target_addr.wrapping_add(self.y as u16)
+
+            }
         }
 
     }
@@ -427,6 +452,12 @@ mod tests {
 
         cpu.memory[0xF0] = 0x88;
         cpu.memory[0xF1] = 0x80;
+        cpu.memory[0x8088] = 0x34;
+        cpu.memory[0x8089] = 0x12;
+        cpu.memory[0x88] = 0x89;
+        cpu.memory[0x89] = 0x67;
+        cpu.memory[0x99] = 0x78;
+        cpu.memory[0x9A] = 0x56;
 
         // Absolute addressing
         assert_eq!(cpu.get_operand_address(AddressingMode::Absolute), 0x8088);
@@ -437,6 +468,12 @@ mod tests {
         assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPage), 0x88);
         assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageX), 0x99);
         assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageY), 0x9A);
+
+        // Indirect addressing
+        println!("Indirect X: {}", cpu.get_operand_address(AddressingMode::IndirectX));
+        assert_eq!(cpu.get_operand_address(AddressingMode::Indirect), 0x1234);
+        assert_eq!(cpu.get_operand_address(AddressingMode::IndirectX), 0x5678);
+        assert_eq!(cpu.get_operand_address(AddressingMode::IndirectY), 0x679B);
 
         cpu.memory[0xF0] = 0xF0;
         cpu.memory[0xF1] = 0xFF;
