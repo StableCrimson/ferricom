@@ -439,7 +439,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_operand_address() {
+    fn test_get_operand_address_immediate() {
 
         let mut cpu = Cpu::new();
         cpu.acc = 0x10;
@@ -450,6 +450,72 @@ mod tests {
 
         assert_eq!(cpu.get_operand_address(AddressingMode::Immediate), 0xF0);
 
+    }
+
+    #[test]
+    fn test_get_operand_address_absolute() {
+
+        let mut cpu = Cpu::new();
+        cpu.acc = 0x10;
+        cpu.x = 0x11;
+        cpu.y = 0x12;
+        cpu.sp = 0x13;
+        cpu.pc = 0xF0;
+
+        cpu.memory[0xF0] = 0x88;
+        cpu.memory[0xF1] = 0x80;
+
+        // Absolute addressing
+        assert_eq!(cpu.get_operand_address(AddressingMode::Absolute), 0x8088);
+        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteX), 0x8099);
+        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteY), 0x809A);
+
+        cpu.memory[0xF0] = 0xF0;
+        cpu.memory[0xF1] = 0xFF;
+
+        // Absolute addressing wrap around
+        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteX), 0x01);
+        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteY), 0x02);
+
+    }
+
+    #[test]
+    fn test_get_operand_address_zero_page() {
+
+        let mut cpu = Cpu::new();
+        cpu.acc = 0x10;
+        cpu.x = 0x11;
+        cpu.y = 0x12;
+        cpu.sp = 0x13;
+        cpu.pc = 0xF0;
+
+        cpu.memory[0xF0] = 0x88;
+        cpu.memory[0xF1] = 0x80;
+
+        // Zero page addressing
+        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPage), 0x88);
+        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageX), 0x99);
+        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageY), 0x9A);
+
+        cpu.memory[0xF0] = 0xF0;
+        cpu.memory[0xF1] = 0xFF;
+
+        // Zero page addressing wrap around
+        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageX), 0x01);
+        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageY), 0x02);
+
+    }
+
+    #[test]
+    fn test_get_operand_address_indirect() {
+
+        let mut cpu = Cpu::new();
+        cpu.acc = 0x10;
+        cpu.x = 0x11;
+        cpu.y = 0x12;
+        cpu.sp = 0x13;
+        cpu.pc = 0xF0;
+
         cpu.memory[0xF0] = 0x88;
         cpu.memory[0xF1] = 0x80;
         cpu.memory[0x8088] = 0x34;
@@ -459,32 +525,11 @@ mod tests {
         cpu.memory[0x99] = 0x78;
         cpu.memory[0x9A] = 0x56;
 
-        // Absolute addressing
-        assert_eq!(cpu.get_operand_address(AddressingMode::Absolute), 0x8088);
-        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteX), 0x8099);
-        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteY), 0x809A);
-
-        // Zero page addressing
-        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPage), 0x88);
-        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageX), 0x99);
-        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageY), 0x9A);
-
         // Indirect addressing
         println!("Indirect X: {}", cpu.get_operand_address(AddressingMode::IndirectX));
         assert_eq!(cpu.get_operand_address(AddressingMode::Indirect), 0x1234);
         assert_eq!(cpu.get_operand_address(AddressingMode::IndirectX), 0x5678);
         assert_eq!(cpu.get_operand_address(AddressingMode::IndirectY), 0x679B);
-
-        cpu.memory[0xF0] = 0xF0;
-        cpu.memory[0xF1] = 0xFF;
-
-        // Absolute addressing wrap around
-        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteX), 0x01);
-        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteY), 0x02);
-
-        // Zero page addressing wrap around
-        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageX), 0x01);
-        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageY), 0x02);
 
     }
 
