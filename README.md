@@ -1,4 +1,4 @@
-# Ferriscom
+# Ferricom
 
 Attempting to write a NES emulator in Rust
 
@@ -17,6 +17,11 @@ If this project helps you write your own emulator or learn Rust, then even bette
 | CLI           | `0x58` | Clear the interrupt disable flag                          |
 | CLV           | `0xB8` | Clear the overflow flag                                   |
 | TAX           | `0xAA` | Copy value from accumulator into the X register           |
+| TAY           | `0xA8` | Copy value from accumulator into the Y register           |
+| TSX           | `0xBA` | Copy value from the stack pointer into the X register     |
+| TXA           | `0x8A` | Copy value from the X register into the accumulator       |
+| TXS           | `0x9A` | Copy value from the X register into the stack pointer     |
+| TYA           | `0x98` | Copy value from the Y register into the accumulator       |
 | INX           | `0xE8` | Increment the value in the X register                     |
 | INY           | `0xC8` | Increment the value in the Y register                     |
 | DEX           | `0xCA` | Decrement the value in the X register                     |
