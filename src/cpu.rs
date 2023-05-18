@@ -13,6 +13,19 @@ const DECIMAL_MODE_FLAG: u8 =            0b0000_1000;
 const OVERFLOW_FLAG: u8 =           0b0100_0000;
 const NEGATIVE_FLAG: u8 =           0b1000_0000;
 
+#[derive(Debug)]
+enum AddressingMode {
+    ZeroPage,
+    ZeroPageX,
+    ZeroPageY,
+    Absolute,
+    AbsoluteX,
+    AbsoluteY,
+    Immediate,
+    Relative,
+    Indirect
+}
+
 pub struct Cpu {
 
     pc: u16,
@@ -92,14 +105,7 @@ impl Cpu {
                 0x00 => return,
 
                 /* LDA - Load Accumulator */
-                0xA9 => { // Immediate
-                    
-                    let data = self.mem_read_u8(self.pc);
-                    self.acc = data;
-                    self.pc += 1;
-                    self.set_negative_and_zero_bits(self.acc);
-
-                },
+                0xA9 => self.lda(AddressingMode::Immediate),
 
                 /* TAX - Transfer Accumulator to X */
                 0xAA => {
@@ -178,6 +184,23 @@ impl Cpu {
 
     }
 
+    fn get_operand_address(&mut self, addressing_mode: AddressingMode) -> u16 {
+
+        match addressing_mode {
+
+            AddressingMode::Immediate => self.pc,
+            AddressingMode::Absolute => self.mem_read_u16(self.pc),
+            AddressingMode::AbsoluteX => self.mem_read_u16(self.pc).wrapping_add(self.x as u16),
+            AddressingMode::AbsoluteY => self.mem_read_u16(self.pc).wrapping_add(self.y as u16),
+            AddressingMode::ZeroPage => self.mem_read_u8(self.pc) as u16,
+            AddressingMode::ZeroPageX => self.mem_read_u8(self.pc).wrapping_add(self.x) as u16,
+            AddressingMode::ZeroPageY => self.mem_read_u8(self.pc).wrapping_add(self.y) as u16,
+            _ => todo!("Addressing mode [{:?}] is unimplemented", addressing_mode)
+
+        }
+
+    }
+
     fn set_negative_and_zero_bits(&mut self, value: u8) {
 
         if value == 0 {
@@ -223,23 +246,25 @@ impl Cpu {
     }
 
     fn increment_register(register: &mut u8) {
-        if *register == 0xFF {
-            *register = 0;
-        } else {
-            *register += 1;
-        }
+        *register = (*register).wrapping_add(1);
     }
 
     fn decrement_register(register: &mut u8) {
-        if *register == 0 {
-            *register = 0xFF;
-        } else {
-            *register -= 1;
-        }
+        *register = (*register).wrapping_sub(1);
     }
 
     fn clear_flag(&mut self, flag_alias: u8) {
         self.status &= !flag_alias;
+    }
+
+    fn lda(&mut self, addressing_mode: AddressingMode) {
+
+        let address = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(address);
+        self.acc = data;
+        self.pc += 1;
+        self.set_negative_and_zero_bits(self.acc);
+
     }
 
 }
@@ -385,6 +410,44 @@ mod tests {
 
         cpu.clear_flag(ZERO_FLAG);
         assert_eq!(cpu.status, 0b1111_1101);
+
+    }
+
+    #[test]
+    fn test_get_operand_address() {
+
+        let mut cpu = Cpu::new();
+        cpu.acc = 0x10;
+        cpu.x = 0x11;
+        cpu.y = 0x12;
+        cpu.sp = 0x13;
+        cpu.pc = 0xF0;
+
+        assert_eq!(cpu.get_operand_address(AddressingMode::Immediate), 0xF0);
+
+        cpu.memory[0xF0] = 0x88;
+        cpu.memory[0xF1] = 0x80;
+
+        // Absolute addressing
+        assert_eq!(cpu.get_operand_address(AddressingMode::Absolute), 0x8088);
+        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteX), 0x8099);
+        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteY), 0x809A);
+
+        // Zero page addressing
+        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPage), 0x88);
+        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageX), 0x99);
+        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageY), 0x9A);
+
+        cpu.memory[0xF0] = 0xF0;
+        cpu.memory[0xF1] = 0xFF;
+
+        // Absolute addressing wrap around
+        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteX), 0x01);
+        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteY), 0x02);
+
+        // Zero page addressing wrap around
+        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageX), 0x01);
+        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageY), 0x02);
 
     }
 
