@@ -13,7 +13,6 @@ const DECIMAL_MODE_FLAG: u8 =            0b0000_1000;
 const OVERFLOW_FLAG: u8 =           0b0100_0000;
 const NEGATIVE_FLAG: u8 =           0b1000_0000;
 
-#[derive(Debug)]
 enum AddressingMode {
     ZeroPage,
     ZeroPageX,
@@ -107,6 +106,13 @@ impl Cpu {
 
                 /* LDA - Load Accumulator */
                 0xA9 => self.lda(AddressingMode::Immediate),
+                0xA5 => self.lda(AddressingMode::ZeroPage),     // TODO: Unit test
+                0xB5 => self.lda(AddressingMode::ZeroPageX),    // TODO: Unit test
+                0xAD => self.lda(AddressingMode::Absolute),     // TODO: Unit test
+                0xBD => self.lda(AddressingMode::AbsoluteX),    // TODO: Unit test
+                0xB9 => self.lda(AddressingMode::AbsoluteY),    // TODO: Unit test
+                0xA1 => self.lda(AddressingMode::IndirectX),    // TODO: Unit test
+                0xB1 => self.lda(AddressingMode::IndirectY),    // TODO: Unit test
 
                 /* TAX - Transfer Accumulator to X */
                 0xAA => {
@@ -265,8 +271,8 @@ impl Cpu {
         let msb = (data >> 8) as u8;
         let lsb = data as u8;
 
-        self.memory[addr as usize] = lsb;
-        self.memory[(addr+1) as usize] = msb;
+        self.mem_write_u8(addr, lsb);
+        self.mem_write_u8(addr+1, msb);
 
     }
 
