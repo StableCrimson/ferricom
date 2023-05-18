@@ -30,8 +30,8 @@ impl Cpu {
     pub fn new() -> Cpu {
 
         let mut cpu = Cpu {
-            pc: 0,
-            sp: 0,
+            pc: 0x8000,
+            sp: 0x0100,
             acc: 0,
             x: 0,
             y: 0,
@@ -39,13 +39,12 @@ impl Cpu {
             memory: [0; 0xFFFF]
         };
 
-        cpu.reset();
         cpu
 
     }
 
     pub fn reset(&mut self) {
-        self.pc = 0;
+        self.pc = 0x8000;
         self.sp = 0x0100;
         self.acc = 0;
         self.x = 0;
@@ -72,11 +71,21 @@ impl Cpu {
 
     }
 
-    pub fn run(&mut self, program: Vec<u8>) {
+    pub fn load_and_run(&mut self, program: Vec<u8>) {
+        self.load(program);
+        self.run();
+    }
+
+    pub fn load(&mut self, program: Vec<u8>) {
+        self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
+        self.pc = 0x8000;
+    }
+
+    pub fn run(&mut self) {
 
         loop {
 
-            let opcode = program[self.pc as usize];
+            let opcode = self.mem_read_u8(self.pc);
             self.pc += 1;
 
             match opcode {
@@ -87,15 +96,9 @@ impl Cpu {
                 /* LDA - Load Accumulator */
                 0xA9 => { // Immediate
                     
-                    // TODO: When we can load the program into memory, switch to the mem_read_u8() method instead
-                    // let data = self.mem_read_u8(self.pc);
-                    // self.acc = data;
-
-                    // TODO: Remove old implementation when the above todo is addressed
-                    let data = program[self.pc as usize]
-;                   self.acc = data;
+                    let data = self.mem_read_u8(self.pc);
+                    self.acc = data;
                     self.pc += 1;
-
                     self.set_negative_and_zero_bits(self.acc);
 
                 },
@@ -168,24 +171,21 @@ impl Cpu {
 
     fn mem_read_u8(&mut self, addr: u16) -> u8 {
         let data = self.memory[addr as usize];
-        self.pc += 1;
         data
     }
 
     fn mem_read_u16(&mut self, addr: u16) -> u16 {
 
-        let lsb = self.memory[addr as usize];
-        let msb = self.memory[(addr+1) as usize];
+        let lsb = self.mem_read_u8(addr) as u16;
+        let msb = self.mem_read_u8(addr+1) as u16;
 
-        let data: u16 = ((msb as u16) << 8) | lsb as u16;
-        self.pc += 2;
+        let data: u16 = (msb << 8) | lsb;
         data
 
     }
 
     fn mem_write_u8(&mut self, addr: u16, data: u8) {
         self.memory[addr as usize] = data;
-        self.pc += 1;
     }
 
     fn mem_write_u16(&mut self, addr: u16, data: u16) {
@@ -195,7 +195,6 @@ impl Cpu {
 
         self.memory[addr as usize] = lsb;
         self.memory[(addr+1) as usize] = msb;
-        self.pc += 2;
 
     }
 
@@ -231,7 +230,7 @@ mod tests {
 
         let cpu = Cpu::new();
 
-        assert_eq!(cpu.pc, 0);
+        assert_eq!(cpu.pc, 0x8000);
         assert_eq!(cpu.sp, 0x0100);
         assert_eq!(cpu.acc, 0);
         assert_eq!(cpu.x, 0);
@@ -254,7 +253,7 @@ mod tests {
 
         cpu.reset();
 
-        assert_eq!(cpu.pc, 0);
+        assert_eq!(cpu.pc, 0x8000);
         assert_eq!(cpu.sp, 0x0100);
         assert_eq!(cpu.acc, 0);
         assert_eq!(cpu.x, 0);
@@ -316,7 +315,6 @@ mod tests {
         cpu.memory[162] = 0xAF;
 
         assert_eq!(cpu.mem_read_u8(162), 0xAF);
-        assert_eq!(cpu.pc, 1);
 
     }
 
@@ -328,7 +326,6 @@ mod tests {
         cpu.memory[163] = 0x08;
 
         assert_eq!(cpu.mem_read_u16(162), 0x0880);
-        assert_eq!(cpu.pc, 2);
 
     }
 
@@ -340,7 +337,6 @@ mod tests {
         cpu.mem_write_u8(162, data);
 
         assert_eq!(cpu.memory[162], 0x12);
-        assert_eq!(cpu.pc, 1);
 
     }
 
@@ -353,7 +349,6 @@ mod tests {
 
         assert_eq!(cpu.memory[162], 0x34);
         assert_eq!(cpu.memory[163], 0x12);
-        assert_eq!(cpu.pc, 2);
 
     }
 
@@ -381,7 +376,7 @@ mod tests {
         let mut cpu = Cpu::new();
         let program = vec![0xA9, 0xC0, 0xAA, 0xE8, 0x00];
 
-        cpu.run(program);
+        cpu.load_and_run(program);
 
         assert_eq!(cpu.acc, 0xC0);
         assert_eq!(cpu.x, 0xC1);
@@ -395,7 +390,7 @@ mod tests {
 
         // Negative bit is set
         let program = vec![0xA9, 156, 0x00];
-        cpu.run(program);
+        cpu.load_and_run(program);
 
         assert_eq!(cpu.acc, 156);
 
@@ -408,7 +403,7 @@ mod tests {
         cpu.acc = 156;
 
         let program = vec![0xAA, 0x00];
-        cpu.run(program);
+        cpu.load_and_run(program);
 
         assert_eq!(cpu.x, 156);
         assert!(cpu.status & NEGATIVE_FLAG > 0);
@@ -424,7 +419,7 @@ mod tests {
         assert_eq!(cpu.status & NEGATIVE_FLAG, 0);
 
         let program = vec![0xE8, 0x00];
-        cpu.run(program);
+        cpu.load_and_run(program);
 
         assert_eq!(cpu.x, 128);
         assert!(cpu.status & NEGATIVE_FLAG > 0);
@@ -440,7 +435,7 @@ mod tests {
         assert_eq!(cpu.status & NEGATIVE_FLAG, 0);
 
         let program = vec![0xC8, 0x00];
-        cpu.run(program);
+        cpu.load_and_run(program);
 
         assert_eq!(cpu.y, 128);
         assert!(cpu.status & NEGATIVE_FLAG > 0);
@@ -456,7 +451,7 @@ mod tests {
         assert!(cpu.status & NEGATIVE_FLAG > 0);
 
         let program = vec![0xCA, 0x00];
-        cpu.run(program);
+        cpu.load_and_run(program);
 
         assert_eq!(cpu.x, 127);
         assert_eq!(cpu.status & NEGATIVE_FLAG, 0);
@@ -472,7 +467,7 @@ mod tests {
         assert!(cpu.status & NEGATIVE_FLAG > 0);
 
         let program = vec![0x88, 0x00];
-        cpu.run(program);
+        cpu.load_and_run(program);
 
         assert_eq!(cpu.y, 127);
         assert_eq!(cpu.status & NEGATIVE_FLAG, 0);
@@ -486,7 +481,7 @@ mod tests {
         cpu.status = 0b1111_1111;
 
         let program = vec![0x18, 0x00];
-        cpu.run(program);
+        cpu.load_and_run(program);
 
         assert_eq!(cpu.status, !CARRY_FLAG);
 
@@ -499,7 +494,7 @@ mod tests {
         cpu.status = 0b1111_1111;
 
         let program = vec![0xD8, 0x00];
-        cpu.run(program);
+        cpu.load_and_run(program);
 
         assert_eq!(cpu.status, !DECIMAL_MODE_FLAG);
 
@@ -512,7 +507,7 @@ mod tests {
         cpu.status = 0b1111_1111;
 
         let program = vec![0x58, 0x00];
-        cpu.run(program);
+        cpu.load_and_run(program);
 
         assert_eq!(cpu.status, !INTERRUPT_DISABLE_FLAG);
 
@@ -525,7 +520,7 @@ mod tests {
         cpu.status = 0b1111_1111;
 
         let program = vec![0xB8, 0x00];
-        cpu.run(program);
+        cpu.load_and_run(program);
 
         assert_eq!(cpu.status, !OVERFLOW_FLAG);
 
