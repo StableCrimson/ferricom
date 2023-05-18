@@ -38,6 +38,7 @@ impl Cpu {
         self.status = 0;
     }
 
+    #[cfg(not(tarpaulin_include))]
     pub fn print_stats(&self) {
 
         println!("Program counter:  {}", self.pc);
