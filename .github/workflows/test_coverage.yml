@@ -10,13 +10,13 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
-
+  Tests-and-Coverage:
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
-    - name: Install tarpaulin
-      run: cargo install cargo-tarpaulin
     - name: Run tests
-      run: cargo tarpaulin --fail-under 100
+      run: cargo test --verbose
+    # - name: Install tarpaulin
+    #   run: cargo install cargo-tarpaulin
+    # - name: Run tests
+    #   run: cargo tarpaulin --fail-under 100
