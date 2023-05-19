@@ -29,6 +29,7 @@ If this project helps you write your own emulator or learn Rust, then even bette
 
 ## Resources
 
+- [Rust NES Emu Blog](https://bugzmanov.github.io/nes_ebook/)
 - [6502 Instruction set](https://www.nesdev.org/obelisk-6502-guide/instructions.html)
 - [6502 Status flags](https://www.nesdev.org/wiki/Status_flags)
 - [6502 Addressing modes](https://www.nesdev.org/obelisk-6502-guide/addressing.html)

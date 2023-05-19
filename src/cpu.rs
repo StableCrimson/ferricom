@@ -1,4 +1,4 @@
-
+use crate::instructions::{self};
 /*
     Aliases for the flags in the 6502 status register.
     More information on these flags can be found here: https://www.nesdev.org/wiki/Status_flags
@@ -13,7 +13,7 @@ const DECIMAL_MODE_FLAG: u8 =            0b0000_1000;
 const OVERFLOW_FLAG: u8 =           0b0100_0000;
 const NEGATIVE_FLAG: u8 =           0b1000_0000;
 
-enum AddressingMode {
+pub enum AddressingMode {
     ZeroPage,
     ZeroPageX,
     ZeroPageY,
@@ -24,6 +24,7 @@ enum AddressingMode {
     IndirectX,
     IndirectY,
     Immediate,
+    Implied
 }
 
 pub struct Cpu {
@@ -97,106 +98,76 @@ impl Cpu {
 
     pub fn run(&mut self) {
 
+        let ref ins_set = *instructions::CPU_INSTRUCTION_SET;
+
         loop {
 
             let opcode = self.mem_read_u8(self.pc);
             self.pc += 1;
+            let current_pc = self.pc;
+
+            let ins = ins_set.get(&opcode).expect(&format!("Instruction {} is invalid or unimplemented", opcode));
 
             match opcode {
 
-                /* BRK - Force Interrupt */
                 0x00 => return,
-
-                /* LDA - Load Accumulator */
-                0xA9 => self.lda(AddressingMode::Immediate),
-                0xA5 => self.lda(AddressingMode::ZeroPage),     // TODO: Unit test
-                0xB5 => self.lda(AddressingMode::ZeroPageX),    // TODO: Unit test
-                0xAD => self.lda(AddressingMode::Absolute),     // TODO: Unit test
-                0xBD => self.lda(AddressingMode::AbsoluteX),    // TODO: Unit test
-                0xB9 => self.lda(AddressingMode::AbsoluteY),    // TODO: Unit test
-                0xA1 => self.lda(AddressingMode::IndirectX),    // TODO: Unit test
-                0xB1 => self.lda(AddressingMode::IndirectY),    // TODO: Unit test
-
-                /* TAX - Transfer Accumulator to X */
+                0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => self.lda(&ins.addressing_mode),
                 0xAA => {
                     self.x = self.acc;
                     self.set_negative_and_zero_bits(self.x);
                 },
-
-                /* TAY - Transfer Accumulator to Y */
                 0xA8 => {
                     self.y = self.acc;
                     self.set_negative_and_zero_bits(self.y);
                 },
-
-                /* TSX - Transfer Stack Pointer to X */
                 0xBA => {
                     self.x = self.sp;
                     self.set_negative_and_zero_bits(self.x);
                 },
-
-                /* TXA - Transfer X to Accumulator */
                 0x8A => {
                     self.acc = self.x;
                     self.set_negative_and_zero_bits(self.acc);
                 },
-
-                /* TXS - Transfer X to Stack Pointer */
                 0x9A => self.sp = self.x,
-
-                /* TYA - Transfer Y to Accumulator */
                 0x98 => {
                     self.acc = self.y;
                     self.set_negative_and_zero_bits(self.acc);
                 },
-
-                /* CLC - Clear Carry Flag */
                 0x18 => self.clear_flag(CARRY_FLAG),
-
-                /* CLD - Clear Decimal Mode */
                 0xD8 => self.clear_flag(DECIMAL_MODE_FLAG),
-
-                /* CLI - Clear Interrupt Disable */
                 0x58 => self.clear_flag(INTERRUPT_DISABLE_FLAG),
-
-                /* CLV - Clear Overflow Flag */
                 0xB8 => self.clear_flag(OVERFLOW_FLAG),
-
-                /* DEX - Decrement the X Register */
                 0xCA => {
                     Cpu::decrement_register(&mut self.x);
                     self.set_negative_and_zero_bits(self.x);
                 },
-
-                /* DEY - Decrement the Y Register */
                 0x88 => {
                     Cpu::decrement_register(&mut self.y);
                     self.set_negative_and_zero_bits(self.y);
                 },
-
-                /* INX - Increment the X Register */
                 0xE8 => {
                     Cpu::increment_register(&mut self.x);
                     self.set_negative_and_zero_bits(self.x);
                 },
-
-                /* INY - Increment the Y Register */
                 0xC8 => {
                     Cpu::increment_register(&mut self.y);
                     self.set_negative_and_zero_bits(self.y);
                 }
-
                 _ => todo!("Opcode [0x{:0X}] is invalid or unimplemented", opcode)
 
-            };
+            }
+
+            if current_pc == self.pc {
+                self.pc += (ins.bytes-1) as u16;
+            }
 
         }
 
     }
 
-    fn get_operand_address(&mut self, addressing_mode: AddressingMode) -> u16 {
+    fn get_operand_address(&mut self, addressing_mode: &AddressingMode) -> u16 {
 
-        match addressing_mode {
+        match *addressing_mode {
 
             AddressingMode::Immediate => self.pc,
             AddressingMode::Absolute => self.mem_read_u16(self.pc),
@@ -230,7 +201,8 @@ impl Cpu {
 
                 target_addr.wrapping_add(self.y as u16)
 
-            }
+            },
+            _ => 0
         }
 
     }
@@ -291,12 +263,11 @@ impl Cpu {
         self.status &= !flag_alias;
     }
 
-    fn lda(&mut self, addressing_mode: AddressingMode) {
+    fn lda(&mut self, addressing_mode: &AddressingMode) {
 
         let address = self.get_operand_address(addressing_mode);
         let data = self.mem_read_u8(address);
         self.acc = data;
-        self.pc += 1;
         self.set_negative_and_zero_bits(self.acc);
 
     }
@@ -457,7 +428,7 @@ mod tests {
         cpu.sp = 0x13;
         cpu.pc = 0xF0;
 
-        assert_eq!(cpu.get_operand_address(AddressingMode::Immediate), 0xF0);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::Immediate), 0xF0);
 
     }
 
@@ -475,16 +446,16 @@ mod tests {
         cpu.memory[0xF1] = 0x80;
 
         // Absolute addressing
-        assert_eq!(cpu.get_operand_address(AddressingMode::Absolute), 0x8088);
-        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteX), 0x8099);
-        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteY), 0x809A);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::Absolute), 0x8088);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::AbsoluteX), 0x8099);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::AbsoluteY), 0x809A);
 
         cpu.memory[0xF0] = 0xF0;
         cpu.memory[0xF1] = 0xFF;
 
         // Absolute addressing wrap around
-        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteX), 0x01);
-        assert_eq!(cpu.get_operand_address(AddressingMode::AbsoluteY), 0x02);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::AbsoluteX), 0x01);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::AbsoluteY), 0x02);
 
     }
 
@@ -502,16 +473,16 @@ mod tests {
         cpu.memory[0xF1] = 0x80;
 
         // Zero page addressing
-        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPage), 0x88);
-        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageX), 0x99);
-        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageY), 0x9A);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::ZeroPage), 0x88);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::ZeroPageX), 0x99);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::ZeroPageY), 0x9A);
 
         cpu.memory[0xF0] = 0xF0;
         cpu.memory[0xF1] = 0xFF;
 
         // Zero page addressing wrap around
-        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageX), 0x01);
-        assert_eq!(cpu.get_operand_address(AddressingMode::ZeroPageY), 0x02);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::ZeroPageX), 0x01);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::ZeroPageY), 0x02);
 
     }
 
@@ -535,10 +506,10 @@ mod tests {
         cpu.memory[0x9A] = 0x56;
 
         // Indirect addressing
-        println!("Indirect X: {}", cpu.get_operand_address(AddressingMode::IndirectX));
-        assert_eq!(cpu.get_operand_address(AddressingMode::Indirect), 0x1234);
-        assert_eq!(cpu.get_operand_address(AddressingMode::IndirectX), 0x5678);
-        assert_eq!(cpu.get_operand_address(AddressingMode::IndirectY), 0x679B);
+        println!("Indirect X: {}", cpu.get_operand_address(&AddressingMode::IndirectX));
+        assert_eq!(cpu.get_operand_address(&AddressingMode::Indirect), 0x1234);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::IndirectX), 0x5678);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::IndirectY), 0x679B);
 
     }
 
@@ -552,6 +523,19 @@ mod tests {
         cpu.load_and_run(program);
 
         assert_eq!(cpu.acc, 156);
+
+    }
+
+    #[test]
+    fn test_lda_absolute() {
+
+        let mut cpu = Cpu::new();
+
+        // Negative bit is set
+        let program = vec![0xAD, 0x04, 0x80, 0x00, 0x13];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.acc, 0x13);
 
     }
 

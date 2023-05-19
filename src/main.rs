@@ -1,4 +1,7 @@
-mod cpu;
+pub mod cpu;
+pub mod instructions;
+
+extern crate lazy_static;
 
 use cpu::Cpu;
 
