@@ -527,13 +527,96 @@ mod tests {
     }
 
     #[test]
+    fn test_lda_zero_page() {
+
+        let mut cpu = Cpu::new();
+
+        let program = vec![0xA5, 0x04, 0x00];
+        cpu.load(program);
+        cpu.memory[0x04] = 0x13;
+        cpu.run();
+
+        assert_eq!(cpu.acc, 0x13);
+
+    }
+
+    #[test]
+    fn test_lda_zero_page_x() {
+
+        let mut cpu = Cpu::new();
+
+        let program = vec![0xA9, 0xFA, 0xAA, 0xB5, 0x0A, 0x00];
+        cpu.load(program);
+        cpu.memory[0x04] = 0x13;
+        cpu.run();
+
+        assert_eq!(cpu.acc, 0x13);
+
+    }
+
+    #[test]
     fn test_lda_absolute() {
 
         let mut cpu = Cpu::new();
 
-        // Negative bit is set
         let program = vec![0xAD, 0x04, 0x80, 0x00, 0x13];
         cpu.load_and_run(program);
+
+        assert_eq!(cpu.acc, 0x13);
+
+    }
+
+    #[test]
+    fn test_lda_absolute_x() {
+
+        let mut cpu = Cpu::new();
+
+        let program = vec![0xA9, 0x04, 0xAA, 0xBD, 0x03, 0x80, 0x00, 0x13];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.acc, 0x13);
+
+    }
+
+    #[test]
+    fn test_lda_absolute_y() {
+
+        let mut cpu = Cpu::new();
+
+        let program = vec![0xA9, 0x04, 0xA8, 0xB9, 0x03, 0x80, 0x00, 0x13];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.acc, 0x13);
+
+    }
+
+    #[test]
+    fn test_lda_indirect_x() {
+
+        let mut cpu = Cpu::new();
+
+        let program = vec![0xA9, 0x10, 0xAA, 0xA1, 0xEF, 0x00];
+        cpu.load(program);
+        cpu.memory[0xFF] = 0x01;
+        cpu.memory[0x100] = 0x00;
+        cpu.memory[0x01] = 0x13;
+        cpu.run();
+
+        assert_eq!(cpu.acc, 0x13);
+
+    }
+
+    #[test]
+    fn test_lda_indirect_y() {
+
+        let mut cpu = Cpu::new();
+
+        let program = vec![0xA9, 0x10, 0xA8, 0xB1, 0xEF, 0x00];
+        cpu.load(program);
+        cpu.memory[0xEF] = 0x01;
+        cpu.memory[0xF0] = 0x00;
+        cpu.memory[0x11] = 0x13;
+        cpu.run();
 
         assert_eq!(cpu.acc, 0x13);
 

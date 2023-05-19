@@ -28,13 +28,13 @@ lazy_static! {
     Instruction::new(0x00, "BRK", 1, 7, AddressingMode::Implied),
 
     Instruction::new(0xA9, "LDA", 2, 2, AddressingMode::Immediate),
-    Instruction::new(0xA5, "LDA", 2, 3, AddressingMode::ZeroPage), // TODO: Write test
-    Instruction::new(0xB5, "LDA", 2, 4, AddressingMode::ZeroPageX), // TODO: Write test
+    Instruction::new(0xA5, "LDA", 2, 3, AddressingMode::ZeroPage),
+    Instruction::new(0xB5, "LDA", 2, 4, AddressingMode::ZeroPageX),
     Instruction::new(0xAD, "LDA", 3, 4, AddressingMode::Absolute),
-    Instruction::new(0xBD, "LDA", 3, 4, AddressingMode::AbsoluteX), // TODO: Write test
-    Instruction::new(0xB9, "LDA", 3, 4, AddressingMode::AbsoluteY), // TODO: Write test
-    Instruction::new(0xA1, "LDA", 2, 6, AddressingMode::IndirectX), // TODO: Write test
-    Instruction::new(0xB1, "LDA", 2, 5, AddressingMode::IndirectY), // TODO: Write test
+    Instruction::new(0xBD, "LDA", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xB9, "LDA", 3, 4, AddressingMode::AbsoluteY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xA1, "LDA", 2, 6, AddressingMode::IndirectX),
+    Instruction::new(0xB1, "LDA", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
 
     Instruction::new(0x18, "CLC", 1, 2, AddressingMode::Implied),
     Instruction::new(0xD8, "CLD", 1, 2, AddressingMode::Implied),
