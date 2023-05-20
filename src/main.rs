@@ -5,7 +5,7 @@ pub mod rom;
 extern crate lazy_static;
 
 use std::{fs, env, process};
-use cpu::Cpu;
+use cpu::CPU;
 use rom::ROM;
 
 #[cfg(not(tarpaulin_include))]
@@ -37,7 +37,7 @@ fn main() {
     println!("Program ROM: 0X{:0X} bytes", rom.prg_rom.len());
     println!("Character ROM: 0X{:0X} bytes", rom.chr_rom.len());
 
-    let mut cpu = Cpu::new();
+    let mut cpu = CPU::new();
 
     println!("Load 153 into accumulator, transfer it to the X register");
     cpu.load_and_run(vec![0xA9, 153, 0xAA, 0x00]);
