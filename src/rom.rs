@@ -46,8 +46,13 @@ impl ROM {
     println!("iNES Version: {:?}", version);
   
     if version != iNESVersion::iNES_1 {
-      eprintln!("ERROR: Currently only iNES V1 is supported.");
-      process::exit(1);
+      if version != iNESVersion::iNES_2 {
+        eprintln!("ERROR: Currently only iNES V1 is supported.");
+        process::exit(1);
+      }
+
+      println!("WARNING: iNES V2 is not officially supported, but will work as V1 because of backwards compatibility");
+
     }
   
     let trainer_present = has_trainer(header);
