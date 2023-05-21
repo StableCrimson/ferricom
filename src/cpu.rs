@@ -202,7 +202,7 @@ impl CPU {
                 target_addr.wrapping_add(self.y as u16)
 
             },
-            _ => 0
+            _ => panic!("Implied addressed instruction should not be reading an address")
         }
 
     }
@@ -511,6 +511,13 @@ mod tests {
         assert_eq!(cpu.get_operand_address(&AddressingMode::IndirectX), 0x5678);
         assert_eq!(cpu.get_operand_address(&AddressingMode::IndirectY), 0x679B);
 
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_get_operand_address_implied_panics() {
+        let mut cpu = CPU::new();
+        cpu.get_operand_address(&AddressingMode::Implied);
     }
 
     #[test]
