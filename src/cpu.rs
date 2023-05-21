@@ -27,7 +27,7 @@ pub enum AddressingMode {
     Implied
 }
 
-pub struct Cpu {
+pub struct CPU {
 
     pc: u16,
     sp: u8,
@@ -39,11 +39,11 @@ pub struct Cpu {
 
 }
 
-impl Cpu {
+impl CPU {
 
-    pub fn new() -> Cpu {
+    pub fn new() -> CPU {
 
-        Cpu {
+        CPU {
             pc: 0x8000,
             sp: 0,
             acc: 0,
@@ -138,19 +138,19 @@ impl Cpu {
                 0x58 => self.clear_flag(INTERRUPT_DISABLE_FLAG),
                 0xB8 => self.clear_flag(OVERFLOW_FLAG),
                 0xCA => {
-                    Cpu::decrement_register(&mut self.x);
+                    CPU::decrement_register(&mut self.x);
                     self.set_negative_and_zero_bits(self.x);
                 },
                 0x88 => {
-                    Cpu::decrement_register(&mut self.y);
+                    CPU::decrement_register(&mut self.y);
                     self.set_negative_and_zero_bits(self.y);
                 },
                 0xE8 => {
-                    Cpu::increment_register(&mut self.x);
+                    CPU::increment_register(&mut self.x);
                     self.set_negative_and_zero_bits(self.x);
                 },
                 0xC8 => {
-                    Cpu::increment_register(&mut self.y);
+                    CPU::increment_register(&mut self.y);
                     self.set_negative_and_zero_bits(self.y);
                 }
                 _ => todo!("Opcode [0x{:0X}] is invalid or unimplemented", opcode)
@@ -202,7 +202,7 @@ impl Cpu {
                 target_addr.wrapping_add(self.y as u16)
 
             },
-            _ => 0
+            _ => panic!("Implied addressed instruction should not be reading an address")
         }
 
     }
@@ -282,7 +282,7 @@ mod tests {
     #[test]
     fn test_cpu_init() {
 
-        let cpu = Cpu::new();
+        let cpu = CPU::new();
 
         assert_eq!(cpu.pc, 0x8000);
         assert_eq!(cpu.sp, 0);
@@ -296,7 +296,7 @@ mod tests {
     #[test]
     fn test_cpu_reset() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.mem_write_u16(0xFFFC, 0x8000);
 
         cpu.acc = 52;
@@ -320,7 +320,7 @@ mod tests {
     #[test]
     fn test_set_negative_and_zero_flags() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
 
         cpu.set_negative_and_zero_bits(cpu.acc);
         assert!(cpu.status & ZERO_FLAG > 0);
@@ -338,13 +338,13 @@ mod tests {
     #[test]
     fn test_increment_register () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.x = 0xFE;
 
-        Cpu::increment_register(&mut cpu.x);
+        CPU::increment_register(&mut cpu.x);
         assert_eq!(cpu.x, 0xFF);
 
-        Cpu::increment_register(&mut cpu.x);
+        CPU::increment_register(&mut cpu.x);
         assert_eq!(cpu.x, 0);
 
     }
@@ -352,13 +352,13 @@ mod tests {
     #[test]
     fn test_decrement_register () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.x = 1;
 
-        Cpu::decrement_register(&mut cpu.x);
+        CPU::decrement_register(&mut cpu.x);
         assert_eq!(cpu.x, 0);
 
-        Cpu::decrement_register(&mut cpu.x);
+        CPU::decrement_register(&mut cpu.x);
         assert_eq!(cpu.x, 255);
 
     }
@@ -366,7 +366,7 @@ mod tests {
     #[test]
     fn test_mem_read_u8 () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.memory[162] = 0xAF;
 
         assert_eq!(cpu.mem_read_u8(162), 0xAF);
@@ -376,7 +376,7 @@ mod tests {
     #[test]
     fn test_mem_read_u16 () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.memory[162] = 0x80;
         cpu.memory[163] = 0x08;
 
@@ -387,7 +387,7 @@ mod tests {
     #[test]
     fn test_mem_write_u8 () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         let data: u8 = 0x12;
         cpu.mem_write_u8(162, data);
 
@@ -398,7 +398,7 @@ mod tests {
     #[test]
     fn test_mem_write_u16 () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         let data: u16 = 0x1234;
         cpu.mem_write_u16(162, data);
 
@@ -410,7 +410,7 @@ mod tests {
     #[test]
     fn test_clear_flag() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.status = 0b1111_1111;
 
         cpu.clear_flag(ZERO_FLAG);
@@ -421,7 +421,7 @@ mod tests {
     #[test]
     fn test_get_operand_address_immediate() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.acc = 0x10;
         cpu.x = 0x11;
         cpu.y = 0x12;
@@ -435,7 +435,7 @@ mod tests {
     #[test]
     fn test_get_operand_address_absolute() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.acc = 0x10;
         cpu.x = 0x11;
         cpu.y = 0x12;
@@ -462,7 +462,7 @@ mod tests {
     #[test]
     fn test_get_operand_address_zero_page() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.acc = 0x10;
         cpu.x = 0x11;
         cpu.y = 0x12;
@@ -489,7 +489,7 @@ mod tests {
     #[test]
     fn test_get_operand_address_indirect() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.acc = 0x10;
         cpu.x = 0x11;
         cpu.y = 0x12;
@@ -514,9 +514,16 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn test_get_operand_address_implied_panics() {
+        let mut cpu = CPU::new();
+        cpu.get_operand_address(&AddressingMode::Implied);
+    }
+
+    #[test]
     fn test_lda_immediate() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
 
         // Negative bit is set
         let program = vec![0xA9, 156, 0x00];
@@ -529,7 +536,7 @@ mod tests {
     #[test]
     fn test_lda_zero_page() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
 
         let program = vec![0xA5, 0x04, 0x00];
         cpu.load(program);
@@ -543,7 +550,7 @@ mod tests {
     #[test]
     fn test_lda_zero_page_x() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
 
         let program = vec![0xA9, 0xFA, 0xAA, 0xB5, 0x0A, 0x00];
         cpu.load(program);
@@ -557,7 +564,7 @@ mod tests {
     #[test]
     fn test_lda_absolute() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
 
         let program = vec![0xAD, 0x04, 0x80, 0x00, 0x13];
         cpu.load_and_run(program);
@@ -569,7 +576,7 @@ mod tests {
     #[test]
     fn test_lda_absolute_x() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
 
         let program = vec![0xA9, 0x04, 0xAA, 0xBD, 0x03, 0x80, 0x00, 0x13];
         cpu.load_and_run(program);
@@ -581,7 +588,7 @@ mod tests {
     #[test]
     fn test_lda_absolute_y() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
 
         let program = vec![0xA9, 0x04, 0xA8, 0xB9, 0x03, 0x80, 0x00, 0x13];
         cpu.load_and_run(program);
@@ -593,7 +600,7 @@ mod tests {
     #[test]
     fn test_lda_indirect_x() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
 
         let program = vec![0xA9, 0x10, 0xAA, 0xA1, 0xEF, 0x00];
         cpu.load(program);
@@ -609,7 +616,7 @@ mod tests {
     #[test]
     fn test_lda_indirect_y() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
 
         let program = vec![0xA9, 0x10, 0xA8, 0xB1, 0xEF, 0x00];
         cpu.load(program);
@@ -632,7 +639,7 @@ mod tests {
             Increment X
          */
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         let program = vec![0xA9, 0xC0, 0xAA, 0xE8, 0x00];
 
         cpu.load_and_run(program);
@@ -645,7 +652,7 @@ mod tests {
     #[test]
     fn test_tax () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.acc = 156;
 
         let program = vec![0xAA, 0x00];
@@ -660,7 +667,7 @@ mod tests {
     #[test]
     fn test_tay () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.acc = 156;
 
         let program = vec![0xA8, 0x00];
@@ -675,7 +682,7 @@ mod tests {
     #[test]
     fn test_tsx () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.sp = 156;
 
         let program = vec![0xBA, 0x00];
@@ -690,7 +697,7 @@ mod tests {
     #[test]
     fn test_txa () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.x = 156;
 
         let program = vec![0x8A, 0x00];
@@ -705,7 +712,7 @@ mod tests {
     #[test]
     fn test_txs () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.x = 156;
 
         let program = vec![0x9A, 0x00];
@@ -719,7 +726,7 @@ mod tests {
     #[test]
     fn test_tya () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.y = 156;
 
         let program = vec![0x98, 0x00];
@@ -734,7 +741,7 @@ mod tests {
     #[test]
     fn test_inx () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.x = 127;
         cpu.set_negative_and_zero_bits(cpu.x);
         assert_eq!(cpu.status & NEGATIVE_FLAG, 0);
@@ -751,7 +758,7 @@ mod tests {
     #[test]
     fn test_iny () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.y = 127;
         cpu.set_negative_and_zero_bits(cpu.y);
         assert_eq!(cpu.status & NEGATIVE_FLAG, 0);
@@ -768,7 +775,7 @@ mod tests {
     #[test]
     fn test_dex () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.x = 128;
         cpu.set_negative_and_zero_bits(cpu.x);
         assert!(cpu.status & NEGATIVE_FLAG > 0);
@@ -785,7 +792,7 @@ mod tests {
     #[test]
     fn test_dey () {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.y = 128;
         cpu.set_negative_and_zero_bits(cpu.y);
         assert!(cpu.status & NEGATIVE_FLAG > 0);
@@ -802,7 +809,7 @@ mod tests {
     #[test]
     fn test_clc() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.status = 0b1111_1111;
 
         let program = vec![0x18, 0x00];
@@ -817,7 +824,7 @@ mod tests {
     #[test]
     fn test_cld() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.status = 0b1111_1111;
 
         let program = vec![0xD8, 0x00];
@@ -832,7 +839,7 @@ mod tests {
     #[test]
     fn test_cli() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
         cpu.status = 0b1111_1111;
 
         let program = vec![0x58, 0x00];
@@ -847,7 +854,7 @@ mod tests {
     #[test]
     fn test_clv() {
 
-        let mut cpu = Cpu::new();
+        let mut cpu = CPU::new();
 
         let program = vec![0xB8, 0x00];
         cpu.load(program);

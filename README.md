@@ -33,3 +33,4 @@ If this project helps you write your own emulator or learn Rust, then even bette
 - [6502 Instruction set](https://www.nesdev.org/obelisk-6502-guide/instructions.html)
 - [6502 Status flags](https://www.nesdev.org/wiki/Status_flags)
 - [6502 Addressing modes](https://www.nesdev.org/obelisk-6502-guide/addressing.html)
+- [iNES File Format Spec](https://www.nesdev.org/wiki/INES#Flags_6)
