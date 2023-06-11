@@ -67,16 +67,15 @@ impl CPU {
     /// The reason I have this method instead of just deriving debug is
     /// because, as of right now, memory is a part of the CPU struct. So printing
     /// with debug would flood the console with the contents of the NES' RAM.
-
     #[cfg(not(tarpaulin_include))]
     pub fn print_stats(&self) {
 
-        println!("Program counter:  {}", self.pc);
-        println!("Stack pointer:    {}", self.sp);
-        println!("Accumulator:      {}", self.acc);
-        println!("X register:       {}", self.x);
-        println!("Y register:       {}", self.y);
-        println!("Memory at SP:     {}", self.memory[self.sp as usize]);
+        println!("Program counter:  {:0X}", self.pc);
+        println!("Stack pointer:    {:0X}", self.sp);
+        println!("Accumulator:      {:0X}", self.acc);
+        println!("X register:       {:0X}", self.x);
+        println!("Y register:       {:0X}", self.y);
+        println!("Memory at SP:     {:0X}", self.memory[self.sp as usize]);
         println!("Status bits:      NV-BDIZC");
         println!("Status bits:    {:#010b}", self.status);
 
@@ -84,7 +83,7 @@ impl CPU {
 
     /// Loads the program into memory, starting at address 0x8000.
     /// Calling this method WILL reset the CPU state. If you want to test the CPU
-    /// While in a custom state, do not call this, and instead set the state, call load(), then run()
+    /// while in a custom state, do not call this and instead set the state, call load(), then run()
     pub fn load_and_run(&mut self, program: Vec<u8>) {
         self.load(program);
         self.reset();
@@ -100,17 +99,22 @@ impl CPU {
 
         let ref ins_set = *instructions::CPU_INSTRUCTION_SET;
 
+        // TODO REMOVE LATER
+        println!("IMPLEMENTED {} OF 256 INSTRUCTIONS", ins_set.len());
+
         loop {
 
             let opcode = self.mem_read_u8(self.pc);
             self.pc += 1;
             let current_pc = self.pc;
 
-            let ins = ins_set.get(&opcode).expect(&format!("Instruction {} is invalid or unimplemented", opcode));
+            let ins = *ins_set.get(&opcode).expect(&format!("Instruction {} is invalid or unimplemented", opcode));
 
             match opcode {
 
                 0x00 => return,
+                0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => self.and(&ins.addressing_mode),
+                0x24 | 0x2C => self.bit(&ins.addressing_mode),
                 0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => self.lda(&ins.addressing_mode),
                 0xAA => {
                     self.x = self.acc;
@@ -269,6 +273,28 @@ impl CPU {
         let data = self.mem_read_u8(address);
         self.acc = data;
         self.set_negative_and_zero_bits(self.acc);
+
+    }
+
+    fn and(&mut self, addressing_mode: &AddressingMode) {
+
+        let address = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(address);
+        self.acc = self.acc & data;
+        self.set_negative_and_zero_bits(self.acc);
+
+    }
+
+    fn bit(&mut self, addressing_mode: &AddressingMode) {
+
+        let address = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(address);
+        let result = data & self.acc;
+        self.set_negative_and_zero_bits(result);
+
+        if result & OVERFLOW_FLAG > 0 {
+            self.status |= OVERFLOW_FLAG;
+        }
 
     }
 
@@ -518,6 +544,30 @@ mod tests {
     fn test_get_operand_address_implied_panics() {
         let mut cpu = CPU::new();
         cpu.get_operand_address(&AddressingMode::Implied);
+    }
+
+    #[test]
+    fn test_and() {
+        
+        let mut cpu = CPU::new();
+        let program = vec![0xA9, 0b1010_1010, 0x29, 0b1111_0000, 0x00];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.acc, 0b1010_0000);
+
+    }
+
+    #[test]
+    fn test_bit() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA9, 0xF0, 0x2C, 0x06, 0x80, 0x00, 0b1110_0000];
+        cpu.load_and_run(program);
+
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert!(cpu.status & OVERFLOW_FLAG > 0);
+        assert_eq!(cpu.acc, 0xF0);
+
     }
 
     #[test]

@@ -27,6 +27,18 @@ lazy_static! {
   pub static ref CPU_INSTRUCTIONS: Vec<Instruction> = vec![
     Instruction::new(0x00, "BRK", 1, 7, AddressingMode::Implied),
 
+    Instruction::new(0x29, "AND", 2, 2, AddressingMode::Immediate),
+    Instruction::new(0x25, "AND", 2, 3, AddressingMode::ZeroPage),
+    Instruction::new(0x35, "AND", 2, 4, AddressingMode::ZeroPageX),
+    Instruction::new(0x2D, "AND", 3, 4, AddressingMode::Absolute),
+    Instruction::new(0x3D, "AND", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x39, "AND", 3, 4, AddressingMode::AbsoluteY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x21, "AND", 2, 6, AddressingMode::IndirectX),
+    Instruction::new(0x31, "AND", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
+
+    Instruction::new(0x24, "BIT", 2, 3, AddressingMode::ZeroPage),
+    Instruction::new(0x2C, "BIT", 3, 4, AddressingMode::Absolute),
+
     Instruction::new(0xA9, "LDA", 2, 2, AddressingMode::Immediate),
     Instruction::new(0xA5, "LDA", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0xB5, "LDA", 2, 4, AddressingMode::ZeroPageX),
