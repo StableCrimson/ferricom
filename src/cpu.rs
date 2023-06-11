@@ -6,12 +6,20 @@ use crate::instructions::{self};
 const CARRY_FLAG: u8 =              0b0000_0001;
 const ZERO_FLAG: u8 =               0b0000_0010;
 const INTERRUPT_DISABLE_FLAG: u8 =  0b0000_0100;
-const DECIMAL_MODE_FLAG: u8 =            0b0000_1000;
+const DECIMAL_MODE_FLAG: u8 =       0b0000_1000;
 
 /* Bits 4 and 5 are unused */
 
 const OVERFLOW_FLAG: u8 =           0b0100_0000;
 const NEGATIVE_FLAG: u8 =           0b1000_0000;
+
+// pub enum TargetRegister {
+//     ACC,
+//     X,
+//     Y,
+//     SP,
+//     PC
+// }
 
 pub enum AddressingMode {
     ZeroPage,
@@ -113,6 +121,7 @@ impl CPU {
             match opcode {
 
                 0x00 => return,
+                0xEA => (),
                 0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => self.and(&ins.addressing_mode),
                 0x24 | 0x2C => self.bit(&ins.addressing_mode),
                 0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => self.cmp(&ins.addressing_mode),
@@ -121,6 +130,7 @@ impl CPU {
                 0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => self.lda(&ins.addressing_mode),
                 0xA2 | 0xA6 | 0xB6 | 0xAE | 0xBE => self.ldx(&ins.addressing_mode),
                 0xA0 | 0xA4 | 0xB4 | 0xAC | 0xBC => self.ldy(&ins.addressing_mode),
+                0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => self.sta(&ins.addressing_mode),
                 0xAA => {
                     self.x = self.acc;
                     self.set_negative_and_zero_bits(self.x);
@@ -146,6 +156,9 @@ impl CPU {
                 0xD8 => self.clear_flag(DECIMAL_MODE_FLAG),
                 0x58 => self.clear_flag(INTERRUPT_DISABLE_FLAG),
                 0xB8 => self.clear_flag(OVERFLOW_FLAG),
+                0x38 => self.set_flag(CARRY_FLAG),
+                0xF8 => self.set_flag(DECIMAL_MODE_FLAG),
+                0x78 => self.set_flag(INTERRUPT_DISABLE_FLAG),
                 0xCA => {
                     CPU::decrement_register(&mut self.x);
                     self.set_negative_and_zero_bits(self.x);
@@ -272,6 +285,10 @@ impl CPU {
         self.status &= !flag_alias;
     }
 
+    fn set_flag(&mut self, flag_alias: u8) {
+        self.status |= flag_alias;
+    }
+
     fn lda(&mut self, addressing_mode: &AddressingMode) {
 
         let address = self.get_operand_address(addressing_mode);
@@ -296,6 +313,13 @@ impl CPU {
         let data = self.mem_read_u8(address);
         self.y = data;
         self.set_negative_and_zero_bits(self.y);
+
+    }
+
+    fn sta(&mut self, addressing_mode: &AddressingMode) {
+
+        let address = self.get_operand_address(addressing_mode);
+        self.mem_write_u8(address, self.acc);
 
     }
 
@@ -385,6 +409,8 @@ impl CPU {
 
 #[cfg(test)]
 mod tests {
+
+    use std::vec;
 
     use super::*;
 
@@ -849,6 +875,17 @@ mod tests {
     }
 
     #[test]
+    fn test_nop() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xEA, 0x00];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.pc, 0x8002)
+
+    }
+
+    #[test]
     fn test_run_sample_prog_1() {
 
         /*
@@ -865,6 +902,50 @@ mod tests {
 
         assert_eq!(cpu.acc, 0xC0);
         assert_eq!(cpu.x, 0xC1);
+
+    }
+
+    #[test]
+    fn test_sec() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0x38];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.status & CARRY_FLAG, CARRY_FLAG)
+
+    }
+
+    #[test]
+    fn test_sed() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xF8];
+        cpu.load_and_run(program);
+        
+        assert_eq!(cpu.status & DECIMAL_MODE_FLAG, DECIMAL_MODE_FLAG)
+
+    }
+
+    #[test]
+    fn test_sei() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0x78];
+        cpu.load_and_run(program);
+        
+        assert_eq!(cpu.status & INTERRUPT_DISABLE_FLAG, INTERRUPT_DISABLE_FLAG)
+
+    }
+
+    #[test]
+    fn test_sta() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA9, 0x13, 0x8D, 0xFF, 0x80];
+        cpu.load_and_run(program);
+    
+        assert_eq!(cpu.memory[0x80FF], 0x13);
 
     }
 

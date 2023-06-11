@@ -88,6 +88,20 @@ lazy_static! {
     Instruction::new(0xAC, "LDY", 3, 4, AddressingMode::Absolute),
     Instruction::new(0xBC, "LDY", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
 
+    Instruction::new(0xEA, "NOP", 1, 2, AddressingMode::Implied),
+
+    Instruction::new(0x38, "SEC", 1, 2, AddressingMode::Implied),
+    Instruction::new(0xF8, "SED", 1, 2, AddressingMode::Implied),
+    Instruction::new(0x78, "SEI", 1, 2, AddressingMode::Implied),
+
+    Instruction::new(0x85, "STA", 2, 3, AddressingMode::ZeroPage),
+    Instruction::new(0x95, "STA", 2, 4, AddressingMode::ZeroPageX),
+    Instruction::new(0x8D, "STA", 3, 4, AddressingMode::Absolute),
+    Instruction::new(0x9D, "STA", 3, 5, AddressingMode::AbsoluteX),
+    Instruction::new(0x99, "STA", 3, 5, AddressingMode::AbsoluteY),
+    Instruction::new(0x81, "STA", 2, 6, AddressingMode::IndirectX),
+    Instruction::new(0x91, "STA", 2, 6, AddressingMode::IndirectY),
+
     Instruction::new(0xAA, "TAX", 1, 2, AddressingMode::Implied),
     Instruction::new(0xA8, "TAY", 1, 2, AddressingMode::Implied),
     Instruction::new(0xBA, "TSX", 1, 2, AddressingMode::Implied),
