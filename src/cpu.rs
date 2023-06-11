@@ -293,28 +293,24 @@ impl CPU {
 
         let address = self.get_operand_address(addressing_mode);
         let data = self.mem_read_u8(address);
-        let reg;
+        let register_ref = match target_register {
+            TargetRegister::ACC => &mut self.acc,
+            TargetRegister::X => &mut self.x,
+            TargetRegister::Y => &mut self.y,
+        };
         
-        match target_register {
-            TargetRegister::ACC => reg = &mut self.acc,
-            TargetRegister::X => reg = &mut self.x,
-            TargetRegister::Y => reg = &mut self.y,
-        }
-        
-        *reg = data;
+        *register_ref = data;
         self.set_negative_and_zero_bits(data);
 
     }
 
     fn store_register(&mut self, addressing_mode: &AddressingMode, target_register: &TargetRegister) {
 
-        let register_value;
-
-        match target_register {
-            TargetRegister::ACC => register_value = self.acc,
-            TargetRegister::X => register_value = self.x,
-            TargetRegister::Y => register_value = self.y,
-        }
+        let register_value = match target_register {
+            TargetRegister::ACC => self.acc,
+            TargetRegister::X => self.x,
+            TargetRegister::Y => self.y,
+        };
 
         let address = self.get_operand_address(addressing_mode);
         self.mem_write_u8(address, register_value);
@@ -347,14 +343,11 @@ impl CPU {
 
         let address = self.get_operand_address(addressing_mode);
         let data = self.mem_read_u8(address);
-
-        let register_value;
-
-        match target_register {
-            TargetRegister::ACC => register_value = self.acc,
-            TargetRegister::X => register_value = self.x,
-            TargetRegister::Y => register_value = self.y,
-        }
+        let register_value = match target_register {
+            TargetRegister::ACC => self.acc,
+            TargetRegister::X => self.x,
+            TargetRegister::Y => self.y,
+        };
 
         let result = register_value - data;
 
