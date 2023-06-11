@@ -128,7 +128,9 @@ impl CPU {
                 0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => self.load_register(&ins.addressing_mode, &TargetRegister::ACC),
                 0xA2 | 0xA6 | 0xB6 | 0xAE | 0xBE => self.load_register(&ins.addressing_mode, &TargetRegister::X),
                 0xA0 | 0xA4 | 0xB4 | 0xAC | 0xBC => self.load_register(&ins.addressing_mode, &TargetRegister::Y),
-                0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => self.sta(&ins.addressing_mode),
+                0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => self.store_register(&ins.addressing_mode, &TargetRegister::ACC),
+                0x86 | 0x96 | 0x8E => self.store_register(&ins.addressing_mode, &TargetRegister::X),
+                0x84 | 0x94 | 0x8C => self.store_register(&ins.addressing_mode, &TargetRegister::Y),
                 0xAA => {
                     self.x = self.acc;
                     self.set_negative_and_zero_bits(self.x);
@@ -304,10 +306,18 @@ impl CPU {
 
     }
 
-    fn sta(&mut self, addressing_mode: &AddressingMode) {
+    fn store_register(&mut self, addressing_mode: &AddressingMode, target_register: &TargetRegister) {
+
+        let register_value;
+
+        match target_register {
+            TargetRegister::ACC => register_value = self.acc,
+            TargetRegister::X => register_value = self.x,
+            TargetRegister::Y => register_value = self.y,
+        }
 
         let address = self.get_operand_address(addressing_mode);
-        self.mem_write_u8(address, self.acc);
+        self.mem_write_u8(address, register_value);
 
     }
 
@@ -900,6 +910,28 @@ mod tests {
 
         let mut cpu = CPU::new();
         let program = vec![0xA9, 0x13, 0x8D, 0xFF, 0x80];
+        cpu.load_and_run(program);
+    
+        assert_eq!(cpu.memory[0x80FF], 0x13);
+
+    }
+
+    #[test]
+    fn test_stx() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA2, 0x13, 0x8E, 0xFF, 0x80];
+        cpu.load_and_run(program);
+    
+        assert_eq!(cpu.memory[0x80FF], 0x13);
+
+    }
+
+    #[test]
+    fn test_sty() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA0, 0x13, 0x8C, 0xFF, 0x80];
         cpu.load_and_run(program);
     
         assert_eq!(cpu.memory[0x80FF], 0x13);

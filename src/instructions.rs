@@ -102,6 +102,14 @@ lazy_static! {
     Instruction::new(0x81, "STA", 2, 6, AddressingMode::IndirectX),
     Instruction::new(0x91, "STA", 2, 6, AddressingMode::IndirectY),
 
+    Instruction::new(0x86, "STX", 2, 3, AddressingMode::ZeroPage),
+    Instruction::new(0x96, "STX", 2, 4, AddressingMode::ZeroPageY),
+    Instruction::new(0x8E, "STX", 3, 4, AddressingMode::Absolute),
+
+    Instruction::new(0x84, "STY", 2, 3, AddressingMode::ZeroPage),
+    Instruction::new(0x94, "STY", 2, 4, AddressingMode::ZeroPageX),
+    Instruction::new(0x8C, "STY", 3, 4, AddressingMode::Absolute),
+
     Instruction::new(0xAA, "TAX", 1, 2, AddressingMode::Implied),
     Instruction::new(0xA8, "TAY", 1, 2, AddressingMode::Implied),
     Instruction::new(0xBA, "TSX", 1, 2, AddressingMode::Implied),
