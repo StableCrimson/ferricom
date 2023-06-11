@@ -13,10 +13,12 @@ const DECIMAL_MODE_FLAG: u8 =       0b0000_1000;
 const OVERFLOW_FLAG: u8 =           0b0100_0000;
 const NEGATIVE_FLAG: u8 =           0b1000_0000;
 
-pub enum TargetRegister {
+#[derive(PartialEq)]
+pub enum RegisterID {
     ACC,
     X,
     Y,
+    SP
 }
 
 pub enum AddressingMode {
@@ -62,7 +64,7 @@ impl CPU {
 
     pub fn reset(&mut self) {
         self.pc = self.mem_read_u16(0xFFFC);
-        self.sp = 0;
+        self.sp = 0xFF;
         self.acc = 0;
         self.x = 0;
         self.y = 0;
@@ -122,36 +124,21 @@ impl CPU {
                 0xEA => (),
                 0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => self.and(&ins.addressing_mode),
                 0x24 | 0x2C => self.bit(&ins.addressing_mode),
-                0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => self.compare_register(&ins.addressing_mode, &TargetRegister::ACC),
-                0xE0 | 0xE4 | 0xEC => self.compare_register(&ins.addressing_mode, &TargetRegister::X),
-                0xC0 | 0xC4 | 0xCC => self.compare_register(&ins.addressing_mode, &TargetRegister::Y),
-                0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => self.load_register(&ins.addressing_mode, &TargetRegister::ACC),
-                0xA2 | 0xA6 | 0xB6 | 0xAE | 0xBE => self.load_register(&ins.addressing_mode, &TargetRegister::X),
-                0xA0 | 0xA4 | 0xB4 | 0xAC | 0xBC => self.load_register(&ins.addressing_mode, &TargetRegister::Y),
-                0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => self.store_register(&ins.addressing_mode, &TargetRegister::ACC),
-                0x86 | 0x96 | 0x8E => self.store_register(&ins.addressing_mode, &TargetRegister::X),
-                0x84 | 0x94 | 0x8C => self.store_register(&ins.addressing_mode, &TargetRegister::Y),
-                0xAA => {
-                    self.x = self.acc;
-                    self.set_negative_and_zero_bits(self.x);
-                },
-                0xA8 => {
-                    self.y = self.acc;
-                    self.set_negative_and_zero_bits(self.y);
-                },
-                0xBA => {
-                    self.x = self.sp;
-                    self.set_negative_and_zero_bits(self.x);
-                },
-                0x8A => {
-                    self.acc = self.x;
-                    self.set_negative_and_zero_bits(self.acc);
-                },
-                0x9A => self.sp = self.x,
-                0x98 => {
-                    self.acc = self.y;
-                    self.set_negative_and_zero_bits(self.acc);
-                },
+                0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => self.compare_register(&ins.addressing_mode, &RegisterID::ACC),
+                0xE0 | 0xE4 | 0xEC => self.compare_register(&ins.addressing_mode, &RegisterID::X),
+                0xC0 | 0xC4 | 0xCC => self.compare_register(&ins.addressing_mode, &RegisterID::Y),
+                0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => self.load_register(&ins.addressing_mode, &RegisterID::ACC),
+                0xA2 | 0xA6 | 0xB6 | 0xAE | 0xBE => self.load_register(&ins.addressing_mode, &RegisterID::X),
+                0xA0 | 0xA4 | 0xB4 | 0xAC | 0xBC => self.load_register(&ins.addressing_mode, &RegisterID::Y),
+                0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => self.store_register(&ins.addressing_mode, &RegisterID::ACC),
+                0x86 | 0x96 | 0x8E => self.store_register(&ins.addressing_mode, &RegisterID::X),
+                0x84 | 0x94 | 0x8C => self.store_register(&ins.addressing_mode, &RegisterID::Y),
+                0xAA => self.transfer_register(&RegisterID::ACC, &RegisterID::X),
+                0xA8 => self.transfer_register(&RegisterID::ACC, &RegisterID::Y),
+                0xBA => self.transfer_register(&RegisterID::SP, &RegisterID::X),
+                0x8A => self.transfer_register(&RegisterID::X, &RegisterID::ACC),
+                0x9A => self.transfer_register(&RegisterID::X, &RegisterID::SP),
+                0x98 => self.transfer_register(&RegisterID::Y, &RegisterID::ACC),
                 0x18 => self.clear_flag(CARRY_FLAG),
                 0xD8 => self.clear_flag(DECIMAL_MODE_FLAG),
                 0x58 => self.clear_flag(INTERRUPT_DISABLE_FLAG),
@@ -289,14 +276,15 @@ impl CPU {
         self.status |= flag_alias;
     }
 
-    fn load_register(&mut self, addressing_mode: &AddressingMode, target_register: &TargetRegister) {
+    fn load_register(&mut self, addressing_mode: &AddressingMode, target_register: &RegisterID) {
 
         let address = self.get_operand_address(addressing_mode);
         let data = self.mem_read_u8(address);
         let register_ref = match target_register {
-            TargetRegister::ACC => &mut self.acc,
-            TargetRegister::X => &mut self.x,
-            TargetRegister::Y => &mut self.y,
+            RegisterID::ACC => &mut self.acc,
+            RegisterID::X => &mut self.x,
+            RegisterID::Y => &mut self.y,
+            _ => panic!("Stack pointer should not be a target for loading")
         };
         
         *register_ref = data;
@@ -304,16 +292,41 @@ impl CPU {
 
     }
 
-    fn store_register(&mut self, addressing_mode: &AddressingMode, target_register: &TargetRegister) {
+    fn store_register(&mut self, addressing_mode: &AddressingMode, target_register: &RegisterID) {
 
         let register_value = match target_register {
-            TargetRegister::ACC => self.acc,
-            TargetRegister::X => self.x,
-            TargetRegister::Y => self.y,
+            RegisterID::ACC => self.acc,
+            RegisterID::X => self.x,
+            RegisterID::Y => self.y,
+            _ => panic!("Stack pointer should not be a target for storing")
         };
 
         let address = self.get_operand_address(addressing_mode);
         self.mem_write_u8(address, register_value);
+
+    }
+
+    fn transfer_register(&mut self, source_register: &RegisterID, target_register: &RegisterID) {
+
+        let source_value = match source_register {
+            RegisterID::ACC => self.acc,
+            RegisterID::X => self.x,
+            RegisterID::Y => self.y,
+            RegisterID::SP => self.sp
+        };
+
+        let target_ref = match target_register {
+            RegisterID::ACC => &mut self.acc,
+            RegisterID::X => &mut self.x,
+            RegisterID::Y => &mut self.y,
+            RegisterID::SP => &mut self.sp
+        };
+
+        *target_ref = source_value;
+
+        if *target_register != RegisterID::SP {
+            self.set_negative_and_zero_bits(source_value);
+        }
 
     }
 
@@ -339,14 +352,15 @@ impl CPU {
 
     }
 
-    fn compare_register(&mut self, addressing_mode: &AddressingMode, target_register: &TargetRegister) {
+    fn compare_register(&mut self, addressing_mode: &AddressingMode, target_register: &RegisterID) {
 
         let address = self.get_operand_address(addressing_mode);
         let data = self.mem_read_u8(address);
         let register_value = match target_register {
-            TargetRegister::ACC => self.acc,
-            TargetRegister::X => self.x,
-            TargetRegister::Y => self.y,
+            RegisterID::ACC => self.acc,
+            RegisterID::X => self.x,
+            RegisterID::Y => self.y,
+            _ => panic!("Stack pointer should not be a target for comparing")
         };
 
         let result = register_value - data;
@@ -404,7 +418,7 @@ mod tests {
         cpu.reset();
 
         assert_eq!(cpu.pc, 0x8000);
-        assert_eq!(cpu.sp, 0);
+        assert_eq!(cpu.sp, 0xFF);
         assert_eq!(cpu.acc, 0);
         assert_eq!(cpu.x, 0);
         assert_eq!(cpu.y, 0);
@@ -613,6 +627,27 @@ mod tests {
     fn test_get_operand_address_implied_panics() {
         let mut cpu = CPU::new();
         cpu.get_operand_address(&AddressingMode::Implied);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_load_register_sp_panics() {
+        let mut cpu = CPU::new();
+        cpu.load_register(&AddressingMode::Immediate, &RegisterID::SP);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_store_register_sp_panics() {
+        let mut cpu = CPU::new();
+        cpu.store_register(&AddressingMode::Immediate, &RegisterID::SP);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_compare_register_sp_panics() {
+        let mut cpu = CPU::new();
+        cpu.compare_register(&AddressingMode::Immediate, &RegisterID::SP);
     }
 
     #[test]
