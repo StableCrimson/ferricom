@@ -115,7 +115,12 @@ impl CPU {
                 0x00 => return,
                 0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => self.and(&ins.addressing_mode),
                 0x24 | 0x2C => self.bit(&ins.addressing_mode),
+                0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => self.cmp(&ins.addressing_mode),
+                0xE0 | 0xE4 | 0xEC => self.cpx(&ins.addressing_mode),
+                0xC0 | 0xC4 | 0xCC => self.cpy(&ins.addressing_mode),
                 0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => self.lda(&ins.addressing_mode),
+                0xA2 | 0xA6 | 0xB6 | 0xAE | 0xBE => self.ldx(&ins.addressing_mode),
+                0xA0 | 0xA4 | 0xB4 | 0xAC | 0xBC => self.ldy(&ins.addressing_mode),
                 0xAA => {
                     self.x = self.acc;
                     self.set_negative_and_zero_bits(self.x);
@@ -276,6 +281,24 @@ impl CPU {
 
     }
 
+    fn ldx(&mut self, addressing_mode: &AddressingMode) {
+
+        let address = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(address);
+        self.x = data;
+        self.set_negative_and_zero_bits(self.x);
+
+    }
+
+    fn ldy(&mut self, addressing_mode: &AddressingMode) {
+
+        let address = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(address);
+        self.y = data;
+        self.set_negative_and_zero_bits(self.y);
+
+    }
+
     fn and(&mut self, addressing_mode: &AddressingMode) {
 
         let address = self.get_operand_address(addressing_mode);
@@ -294,6 +317,66 @@ impl CPU {
 
         if result & OVERFLOW_FLAG > 0 {
             self.status |= OVERFLOW_FLAG;
+        }
+
+    }
+
+    fn cmp(&mut self, addressing_mode: &AddressingMode) {
+
+        let address = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(address);
+        let result = self.acc - data;
+        
+        if self.acc == data {
+            self.status |= ZERO_FLAG;
+        }
+
+        if self.acc >= data {
+            self.status |= CARRY_FLAG;
+        }
+
+        if result & NEGATIVE_FLAG > 0 {
+            self.status |= NEGATIVE_FLAG;
+        }
+
+    }
+
+    fn cpx(&mut self, addressing_mode: &AddressingMode) {
+
+        let address = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(address);
+        let result = self.x - data;
+        
+        if self.x == data {
+            self.status |= ZERO_FLAG;
+        }
+
+        if self.x >= data {
+            self.status |= CARRY_FLAG;
+        }
+
+        if result & NEGATIVE_FLAG > 0 {
+            self.status |= NEGATIVE_FLAG;
+        }
+
+    }
+
+    fn cpy(&mut self, addressing_mode: &AddressingMode) {
+
+        let address = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(address);
+        let result = self.y - data;
+        
+        if self.y == data {
+            self.status |= ZERO_FLAG;
+        }
+
+        if self.y >= data {
+            self.status |= CARRY_FLAG;
+        }
+
+        if result & NEGATIVE_FLAG > 0 {
+            self.status |= NEGATIVE_FLAG;
         }
 
     }
@@ -571,6 +654,66 @@ mod tests {
     }
 
     #[test]
+    fn test_cmp() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA9, 0xF0, 0xC9, 0xF0, 0x00];
+        cpu.load_and_run(program);
+
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert!(cpu.status & ZERO_FLAG > 0);
+        assert!(cpu.status & CARRY_FLAG > 0);
+
+        let program = vec![0xA9, 0xF0, 0xC9, 0x00, 0x00];
+        cpu.load_and_run(program);
+
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert!(cpu.status & ZERO_FLAG == 0);
+        assert!(cpu.status & CARRY_FLAG > 0);
+
+    }
+
+    #[test]
+    fn test_cpx() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA2, 0xF0, 0xE0, 0xF0, 0x00];
+        cpu.load_and_run(program);
+
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert!(cpu.status & ZERO_FLAG > 0);
+        assert!(cpu.status & CARRY_FLAG > 0);
+
+        let program = vec![0xA2, 0xF0, 0xE0, 0x00, 0x00];
+        cpu.load_and_run(program);
+
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert!(cpu.status & ZERO_FLAG == 0);
+        assert!(cpu.status & CARRY_FLAG > 0);
+
+    }
+
+    #[test]
+    fn test_cpy() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA0, 0xF0, 0xC0, 0xF0, 0x00];
+        cpu.load_and_run(program);
+
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert!(cpu.status & ZERO_FLAG > 0);
+        assert!(cpu.status & CARRY_FLAG > 0);
+
+        let program = vec![0xA0, 0xF0, 0xC0, 0x00, 0x00];
+        cpu.load_and_run(program);
+
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert!(cpu.status & ZERO_FLAG == 0);
+        assert!(cpu.status & CARRY_FLAG > 0);
+
+    }
+
+    #[test]
     fn test_lda_immediate() {
 
         let mut cpu = CPU::new();
@@ -676,6 +819,32 @@ mod tests {
         cpu.run();
 
         assert_eq!(cpu.acc, 0x13);
+
+    }
+
+    #[test]
+    fn test_ldx() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA2, 0xFF, 0x00];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.x, 0xFF);
+        assert_eq!(cpu.status & NEGATIVE_FLAG, NEGATIVE_FLAG);
+        assert_eq!(cpu.status & ZERO_FLAG, 0);
+
+    }
+
+    #[test]
+    fn test_ldy() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA0, 0xFF, 0x00];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.y, 0xFF);
+        assert_eq!(cpu.status & NEGATIVE_FLAG, NEGATIVE_FLAG);
+        assert_eq!(cpu.status & ZERO_FLAG, 0);
 
     }
 
