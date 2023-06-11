@@ -6,12 +6,20 @@ use crate::instructions::{self};
 const CARRY_FLAG: u8 =              0b0000_0001;
 const ZERO_FLAG: u8 =               0b0000_0010;
 const INTERRUPT_DISABLE_FLAG: u8 =  0b0000_0100;
-const DECIMAL_MODE_FLAG: u8 =            0b0000_1000;
+const DECIMAL_MODE_FLAG: u8 =       0b0000_1000;
 
 /* Bits 4 and 5 are unused */
 
 const OVERFLOW_FLAG: u8 =           0b0100_0000;
 const NEGATIVE_FLAG: u8 =           0b1000_0000;
+
+#[derive(PartialEq)]
+pub enum RegisterID {
+    ACC,
+    X,
+    Y,
+    SP
+}
 
 pub enum AddressingMode {
     ZeroPage,
@@ -56,7 +64,7 @@ impl CPU {
 
     pub fn reset(&mut self) {
         self.pc = self.mem_read_u16(0xFFFC);
-        self.sp = 0;
+        self.sp = 0xFF;
         self.acc = 0;
         self.x = 0;
         self.y = 0;
@@ -67,16 +75,15 @@ impl CPU {
     /// The reason I have this method instead of just deriving debug is
     /// because, as of right now, memory is a part of the CPU struct. So printing
     /// with debug would flood the console with the contents of the NES' RAM.
-
     #[cfg(not(tarpaulin_include))]
     pub fn print_stats(&self) {
 
-        println!("Program counter:  {}", self.pc);
-        println!("Stack pointer:    {}", self.sp);
-        println!("Accumulator:      {}", self.acc);
-        println!("X register:       {}", self.x);
-        println!("Y register:       {}", self.y);
-        println!("Memory at SP:     {}", self.memory[self.sp as usize]);
+        println!("Program counter:  {:0X}", self.pc);
+        println!("Stack pointer:    {:0X}", self.sp);
+        println!("Accumulator:      {:0X}", self.acc);
+        println!("X register:       {:0X}", self.x);
+        println!("Y register:       {:0X}", self.y);
+        println!("Memory at SP:     {:0X}", self.memory[self.sp as usize]);
         println!("Status bits:      NV-BDIZC");
         println!("Status bits:    {:#010b}", self.status);
 
@@ -84,7 +91,7 @@ impl CPU {
 
     /// Loads the program into memory, starting at address 0x8000.
     /// Calling this method WILL reset the CPU state. If you want to test the CPU
-    /// While in a custom state, do not call this, and instead set the state, call load(), then run()
+    /// while in a custom state, do not call this and instead set the state, call load(), then run()
     pub fn load_and_run(&mut self, program: Vec<u8>) {
         self.load(program);
         self.reset();
@@ -100,43 +107,45 @@ impl CPU {
 
         let ref ins_set = *instructions::CPU_INSTRUCTION_SET;
 
+        // TODO REMOVE LATER
+        println!("IMPLEMENTED {} OF 256 INSTRUCTIONS", ins_set.len());
+
         loop {
 
             let opcode = self.mem_read_u8(self.pc);
             self.pc += 1;
             let current_pc = self.pc;
 
-            let ins = ins_set.get(&opcode).expect(&format!("Instruction {} is invalid or unimplemented", opcode));
+            let ins = *ins_set.get(&opcode).expect(&format!("Instruction {} is invalid or unimplemented", opcode));
 
             match opcode {
 
                 0x00 => return,
-                0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => self.lda(&ins.addressing_mode),
-                0xAA => {
-                    self.x = self.acc;
-                    self.set_negative_and_zero_bits(self.x);
-                },
-                0xA8 => {
-                    self.y = self.acc;
-                    self.set_negative_and_zero_bits(self.y);
-                },
-                0xBA => {
-                    self.x = self.sp;
-                    self.set_negative_and_zero_bits(self.x);
-                },
-                0x8A => {
-                    self.acc = self.x;
-                    self.set_negative_and_zero_bits(self.acc);
-                },
-                0x9A => self.sp = self.x,
-                0x98 => {
-                    self.acc = self.y;
-                    self.set_negative_and_zero_bits(self.acc);
-                },
+                0xEA => (),
+                0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => self.and(&ins.addressing_mode),
+                0x24 | 0x2C => self.bit(&ins.addressing_mode),
+                0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => self.compare_register(&ins.addressing_mode, &RegisterID::ACC),
+                0xE0 | 0xE4 | 0xEC => self.compare_register(&ins.addressing_mode, &RegisterID::X),
+                0xC0 | 0xC4 | 0xCC => self.compare_register(&ins.addressing_mode, &RegisterID::Y),
+                0xA9 | 0xA5 | 0xB5 | 0xAD | 0xBD | 0xB9 | 0xA1 | 0xB1 => self.load_register(&ins.addressing_mode, &RegisterID::ACC),
+                0xA2 | 0xA6 | 0xB6 | 0xAE | 0xBE => self.load_register(&ins.addressing_mode, &RegisterID::X),
+                0xA0 | 0xA4 | 0xB4 | 0xAC | 0xBC => self.load_register(&ins.addressing_mode, &RegisterID::Y),
+                0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => self.store_register(&ins.addressing_mode, &RegisterID::ACC),
+                0x86 | 0x96 | 0x8E => self.store_register(&ins.addressing_mode, &RegisterID::X),
+                0x84 | 0x94 | 0x8C => self.store_register(&ins.addressing_mode, &RegisterID::Y),
+                0xAA => self.transfer_register(&RegisterID::ACC, &RegisterID::X),
+                0xA8 => self.transfer_register(&RegisterID::ACC, &RegisterID::Y),
+                0xBA => self.transfer_register(&RegisterID::SP, &RegisterID::X),
+                0x8A => self.transfer_register(&RegisterID::X, &RegisterID::ACC),
+                0x9A => self.transfer_register(&RegisterID::X, &RegisterID::SP),
+                0x98 => self.transfer_register(&RegisterID::Y, &RegisterID::ACC),
                 0x18 => self.clear_flag(CARRY_FLAG),
                 0xD8 => self.clear_flag(DECIMAL_MODE_FLAG),
                 0x58 => self.clear_flag(INTERRUPT_DISABLE_FLAG),
                 0xB8 => self.clear_flag(OVERFLOW_FLAG),
+                0x38 => self.set_flag(CARRY_FLAG),
+                0xF8 => self.set_flag(DECIMAL_MODE_FLAG),
+                0x78 => self.set_flag(INTERRUPT_DISABLE_FLAG),
                 0xCA => {
                     CPU::decrement_register(&mut self.x);
                     self.set_negative_and_zero_bits(self.x);
@@ -263,12 +272,110 @@ impl CPU {
         self.status &= !flag_alias;
     }
 
-    fn lda(&mut self, addressing_mode: &AddressingMode) {
+    fn set_flag(&mut self, flag_alias: u8) {
+        self.status |= flag_alias;
+    }
+
+    fn load_register(&mut self, addressing_mode: &AddressingMode, target_register: &RegisterID) {
 
         let address = self.get_operand_address(addressing_mode);
         let data = self.mem_read_u8(address);
-        self.acc = data;
+        let register_ref = match target_register {
+            RegisterID::ACC => &mut self.acc,
+            RegisterID::X => &mut self.x,
+            RegisterID::Y => &mut self.y,
+            _ => panic!("Stack pointer should not be a target for loading")
+        };
+        
+        *register_ref = data;
+        self.set_negative_and_zero_bits(data);
+
+    }
+
+    fn store_register(&mut self, addressing_mode: &AddressingMode, target_register: &RegisterID) {
+
+        let register_value = match target_register {
+            RegisterID::ACC => self.acc,
+            RegisterID::X => self.x,
+            RegisterID::Y => self.y,
+            _ => panic!("Stack pointer should not be a target for storing")
+        };
+
+        let address = self.get_operand_address(addressing_mode);
+        self.mem_write_u8(address, register_value);
+
+    }
+
+    fn transfer_register(&mut self, source_register: &RegisterID, target_register: &RegisterID) {
+
+        let source_value = match source_register {
+            RegisterID::ACC => self.acc,
+            RegisterID::X => self.x,
+            RegisterID::Y => self.y,
+            RegisterID::SP => self.sp
+        };
+
+        let target_ref = match target_register {
+            RegisterID::ACC => &mut self.acc,
+            RegisterID::X => &mut self.x,
+            RegisterID::Y => &mut self.y,
+            RegisterID::SP => &mut self.sp
+        };
+
+        *target_ref = source_value;
+
+        if *target_register != RegisterID::SP {
+            self.set_negative_and_zero_bits(source_value);
+        }
+
+    }
+
+    fn and(&mut self, addressing_mode: &AddressingMode) {
+
+        let address = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(address);
+        self.acc = self.acc & data;
         self.set_negative_and_zero_bits(self.acc);
+
+    }
+
+    fn bit(&mut self, addressing_mode: &AddressingMode) {
+
+        let address = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(address);
+        let result = data & self.acc;
+        self.set_negative_and_zero_bits(result);
+
+        if result & OVERFLOW_FLAG > 0 {
+            self.status |= OVERFLOW_FLAG;
+        }
+
+    }
+
+    fn compare_register(&mut self, addressing_mode: &AddressingMode, target_register: &RegisterID) {
+
+        let address = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(address);
+        let register_value = match target_register {
+            RegisterID::ACC => self.acc,
+            RegisterID::X => self.x,
+            RegisterID::Y => self.y,
+            _ => panic!("Stack pointer should not be a target for comparing")
+        };
+
+        let result = register_value - data;
+
+        if register_value == data {
+            self.set_flag(ZERO_FLAG);
+        }
+
+        if register_value >= data {
+            self.set_flag(CARRY_FLAG);
+        }
+
+        if result & NEGATIVE_FLAG > 0 {
+            self.set_flag(NEGATIVE_FLAG);
+        }
 
     }
 
@@ -276,6 +383,8 @@ impl CPU {
 
 #[cfg(test)]
 mod tests {
+
+    use std::vec;
 
     use super::*;
 
@@ -309,7 +418,7 @@ mod tests {
         cpu.reset();
 
         assert_eq!(cpu.pc, 0x8000);
-        assert_eq!(cpu.sp, 0);
+        assert_eq!(cpu.sp, 0xFF);
         assert_eq!(cpu.acc, 0);
         assert_eq!(cpu.x, 0);
         assert_eq!(cpu.y, 0);
@@ -521,6 +630,111 @@ mod tests {
     }
 
     #[test]
+    #[should_panic]
+    fn test_load_register_sp_panics() {
+        let mut cpu = CPU::new();
+        cpu.load_register(&AddressingMode::Immediate, &RegisterID::SP);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_store_register_sp_panics() {
+        let mut cpu = CPU::new();
+        cpu.store_register(&AddressingMode::Immediate, &RegisterID::SP);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_compare_register_sp_panics() {
+        let mut cpu = CPU::new();
+        cpu.compare_register(&AddressingMode::Immediate, &RegisterID::SP);
+    }
+
+    #[test]
+    fn test_and() {
+        
+        let mut cpu = CPU::new();
+        let program = vec![0xA9, 0b1010_1010, 0x29, 0b1111_0000, 0x00];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.acc, 0b1010_0000);
+
+    }
+
+    #[test]
+    fn test_bit() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA9, 0xF0, 0x2C, 0x06, 0x80, 0x00, 0b1110_0000];
+        cpu.load_and_run(program);
+
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert!(cpu.status & OVERFLOW_FLAG > 0);
+        assert_eq!(cpu.acc, 0xF0);
+
+    }
+
+    #[test]
+    fn test_cmp() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA9, 0xF0, 0xC9, 0xF0, 0x00];
+        cpu.load_and_run(program);
+
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert!(cpu.status & ZERO_FLAG > 0);
+        assert!(cpu.status & CARRY_FLAG > 0);
+
+        let program = vec![0xA9, 0xF0, 0xC9, 0x00, 0x00];
+        cpu.load_and_run(program);
+
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert!(cpu.status & ZERO_FLAG == 0);
+        assert!(cpu.status & CARRY_FLAG > 0);
+
+    }
+
+    #[test]
+    fn test_cpx() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA2, 0xF0, 0xE0, 0xF0, 0x00];
+        cpu.load_and_run(program);
+
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert!(cpu.status & ZERO_FLAG > 0);
+        assert!(cpu.status & CARRY_FLAG > 0);
+
+        let program = vec![0xA2, 0xF0, 0xE0, 0x00, 0x00];
+        cpu.load_and_run(program);
+
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert!(cpu.status & ZERO_FLAG == 0);
+        assert!(cpu.status & CARRY_FLAG > 0);
+
+    }
+
+    #[test]
+    fn test_cpy() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA0, 0xF0, 0xC0, 0xF0, 0x00];
+        cpu.load_and_run(program);
+
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert!(cpu.status & ZERO_FLAG > 0);
+        assert!(cpu.status & CARRY_FLAG > 0);
+
+        let program = vec![0xA0, 0xF0, 0xC0, 0x00, 0x00];
+        cpu.load_and_run(program);
+
+        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert!(cpu.status & ZERO_FLAG == 0);
+        assert!(cpu.status & CARRY_FLAG > 0);
+
+    }
+
+    #[test]
     fn test_lda_immediate() {
 
         let mut cpu = CPU::new();
@@ -630,6 +844,43 @@ mod tests {
     }
 
     #[test]
+    fn test_ldx() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA2, 0xFF, 0x00];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.x, 0xFF);
+        assert_eq!(cpu.status & NEGATIVE_FLAG, NEGATIVE_FLAG);
+        assert_eq!(cpu.status & ZERO_FLAG, 0);
+
+    }
+
+    #[test]
+    fn test_ldy() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA0, 0xFF, 0x00];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.y, 0xFF);
+        assert_eq!(cpu.status & NEGATIVE_FLAG, NEGATIVE_FLAG);
+        assert_eq!(cpu.status & ZERO_FLAG, 0);
+
+    }
+
+    #[test]
+    fn test_nop() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xEA, 0x00];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.pc, 0x8002)
+
+    }
+
+    #[test]
     fn test_run_sample_prog_1() {
 
         /*
@@ -646,6 +897,72 @@ mod tests {
 
         assert_eq!(cpu.acc, 0xC0);
         assert_eq!(cpu.x, 0xC1);
+
+    }
+
+    #[test]
+    fn test_sec() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0x38];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.status & CARRY_FLAG, CARRY_FLAG)
+
+    }
+
+    #[test]
+    fn test_sed() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xF8];
+        cpu.load_and_run(program);
+        
+        assert_eq!(cpu.status & DECIMAL_MODE_FLAG, DECIMAL_MODE_FLAG)
+
+    }
+
+    #[test]
+    fn test_sei() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0x78];
+        cpu.load_and_run(program);
+        
+        assert_eq!(cpu.status & INTERRUPT_DISABLE_FLAG, INTERRUPT_DISABLE_FLAG)
+
+    }
+
+    #[test]
+    fn test_sta() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA9, 0x13, 0x8D, 0xFF, 0x80];
+        cpu.load_and_run(program);
+    
+        assert_eq!(cpu.memory[0x80FF], 0x13);
+
+    }
+
+    #[test]
+    fn test_stx() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA2, 0x13, 0x8E, 0xFF, 0x80];
+        cpu.load_and_run(program);
+    
+        assert_eq!(cpu.memory[0x80FF], 0x13);
+
+    }
+
+    #[test]
+    fn test_sty() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA0, 0x13, 0x8C, 0xFF, 0x80];
+        cpu.load_and_run(program);
+    
+        assert_eq!(cpu.memory[0x80FF], 0x13);
 
     }
 
