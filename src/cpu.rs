@@ -122,6 +122,7 @@ impl CPU {
 
                 0x00 => return,
                 0xEA => (),
+                0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x70 | 0x61 | 0x71 => self.add_with_carry(&ins.addressing_mode),
                 0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => self.and(&ins.addressing_mode),
                 0x24 | 0x2C => self.bit(&ins.addressing_mode),
                 0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => self.compare_register(&ins.addressing_mode, &RegisterID::ACC),
@@ -146,22 +147,10 @@ impl CPU {
                 0x38 => self.set_flag(CARRY_FLAG),
                 0xF8 => self.set_flag(DECIMAL_MODE_FLAG),
                 0x78 => self.set_flag(INTERRUPT_DISABLE_FLAG),
-                0xCA => {
-                    CPU::decrement_register(&mut self.x);
-                    self.set_negative_and_zero_bits(self.x);
-                },
-                0x88 => {
-                    CPU::decrement_register(&mut self.y);
-                    self.set_negative_and_zero_bits(self.y);
-                },
-                0xE8 => {
-                    CPU::increment_register(&mut self.x);
-                    self.set_negative_and_zero_bits(self.x);
-                },
-                0xC8 => {
-                    CPU::increment_register(&mut self.y);
-                    self.set_negative_and_zero_bits(self.y);
-                }
+                0xCA => self.decrement_register(&RegisterID::X),
+                0x88 => self.decrement_register(&RegisterID::Y),
+                0xE8 => self.increment_register(&RegisterID::X),
+                0xC8 => self.increment_register(&RegisterID::Y),
                 _ => todo!("Opcode [0x{:0X}] is invalid or unimplemented", opcode)
 
             }
@@ -260,12 +249,47 @@ impl CPU {
 
     }
 
-    fn increment_register(register: &mut u8) {
-        *register = (*register).wrapping_add(1);
+    fn increment_register(&mut self, target_register: &RegisterID) {
+
+        let register_ref = match target_register {
+            RegisterID::X => &mut self.x,
+            RegisterID::Y => &mut self.y,
+            _ => panic!("Stack pointer or accumulator should not be targets")
+        };
+
+        let data = (*register_ref).wrapping_add(1);
+        *register_ref = data;
+        self.set_negative_and_zero_bits(data);
     }
 
-    fn decrement_register(register: &mut u8) {
-        *register = (*register).wrapping_sub(1);
+    fn decrement_register(&mut self, target_register: &RegisterID) {
+
+        let register_ref = match target_register {
+            RegisterID::X => &mut self.x,
+            RegisterID::Y => &mut self.y,
+            _ => panic!("Stack pointer or accumulator should not be targets")
+        };
+
+        let data = (*register_ref).wrapping_sub(1);
+        *register_ref = data;
+        self.set_negative_and_zero_bits(data);
+
+    }
+
+    fn add_with_carry(&mut self, addressing_mode: &AddressingMode) {
+
+        let address = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(address);
+        self.acc = self.acc.wrapping_add(data);
+
+        self.set_negative_and_zero_bits(self.acc);
+
+        if self.acc <= data {
+            self.set_flag(CARRY_FLAG);
+        }
+
+        // TODO: ? Set overflow flag if sign bit is incorrect???
+
     }
 
     fn clear_flag(&mut self, flag_alias: u8) {
@@ -450,10 +474,10 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.x = 0xFE;
 
-        CPU::increment_register(&mut cpu.x);
+        cpu.increment_register(&RegisterID::X);
         assert_eq!(cpu.x, 0xFF);
 
-        CPU::increment_register(&mut cpu.x);
+        cpu.increment_register(&RegisterID::X);
         assert_eq!(cpu.x, 0);
 
     }
@@ -464,10 +488,10 @@ mod tests {
         let mut cpu = CPU::new();
         cpu.x = 1;
 
-        CPU::decrement_register(&mut cpu.x);
+        cpu.decrement_register(&RegisterID::X);
         assert_eq!(cpu.x, 0);
 
-        CPU::decrement_register(&mut cpu.x);
+        cpu.decrement_register(&RegisterID::X);
         assert_eq!(cpu.x, 255);
 
     }
@@ -648,6 +672,36 @@ mod tests {
     fn test_compare_register_sp_panics() {
         let mut cpu = CPU::new();
         cpu.compare_register(&AddressingMode::Immediate, &RegisterID::SP);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_increment_register_panics() {
+        let mut cpu = CPU::new();
+        cpu.increment_register(&RegisterID::SP);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_decrement_register_panics() {
+        let mut cpu = CPU::new();
+        cpu.decrement_register(&RegisterID::SP);
+    }
+
+    #[test]
+    fn test_adc() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA9, 0xF0, 0x69, 0x0F, 0x00];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.acc, 0xFF);
+
+        let program = vec![0xA9, 0xF0, 0x69, 0x10, 0x00];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.status & CARRY_FLAG, CARRY_FLAG)
+
     }
 
     #[test]

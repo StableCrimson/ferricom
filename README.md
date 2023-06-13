@@ -8,7 +8,7 @@ If this project helps you write your own emulator or learn Rust, then even bette
 
 ## CPU Status
 
-74/256 instructions implemented
+82/256 instructions implemented
 
 - [ ] Stack implemented
 - [ ] Detecting if a page is crossed

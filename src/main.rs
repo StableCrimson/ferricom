@@ -9,7 +9,6 @@ use cpu::CPU;
 use rom::ROM;
 
 #[cfg(not(tarpaulin_include))]
-
 fn main() {
 
     let args: Vec<String> = env::args().collect();
@@ -24,10 +23,7 @@ fn main() {
 
     let byte_code = match fs::read(file_path) {
         Ok(byte_code) => byte_code,
-        Err(_) => {
-            eprintln!("ERROR: Unable to load ROM \"{file_path}\". File path is invalid");
-            process::exit(1);
-        }
+        Err(_) => panic!("ERROR: Unable to load ROM \"{file_path}\". File path is invalid")
     };
 
     println!("ROM is 0X{:?} bytes in size", byte_code.len());
