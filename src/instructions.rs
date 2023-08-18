@@ -36,6 +36,12 @@ lazy_static! {
     Instruction::new(0x61, "ADC", 2, 6, AddressingMode::IndirectX), // TODO: +1 cpu cycle if page is crossed
     Instruction::new(0x71, "ADC", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
 
+    Instruction::new(0x0A, "ASL", 1, 2, AddressingMode::Implied), // ! This kinda doesn't have an addressing mode. It operates directly on the accumulator
+    Instruction::new(0x06, "ASL", 2, 5, AddressingMode::ZeroPage),
+    Instruction::new(0x16, "ASL", 2, 6, AddressingMode::ZeroPageX),
+    Instruction::new(0x0E, "ASL", 3, 6, AddressingMode::Absolute),
+    Instruction::new(0x1E, "ASL", 3, 7, AddressingMode::AbsoluteX),
+
     Instruction::new(0x29, "AND", 2, 2, AddressingMode::Immediate),
     Instruction::new(0x25, "AND", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0x35, "AND", 2, 4, AddressingMode::ZeroPageX),
@@ -127,6 +133,7 @@ lazy_static! {
     Instruction::new(0x9A, "TXS", 1, 2, AddressingMode::Implied),
   ];
 
+  //TODO: Would honestly just be easier to have an array where instructions are organized in order.
   pub static ref CPU_INSTRUCTION_SET: HashMap<u8, &'static Instruction> = {
     let mut map = HashMap::new();
     for ins in &*CPU_INSTRUCTIONS {

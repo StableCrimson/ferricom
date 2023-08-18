@@ -32,7 +32,8 @@ pub enum AddressingMode {
     IndirectX,
     IndirectY,
     Immediate,
-    Implied
+    Implied,
+    Relative
 }
 
 pub struct CPU {
@@ -98,9 +99,16 @@ impl CPU {
         self.run();
     }
 
+    pub fn load_custom_program(&mut self, program: Vec<u8>, start_vector: u16) {
+        let program_length = program.len();
+        self.memory[(start_vector as usize)..((start_vector as usize) + program_length)].copy_from_slice(&program[..]);
+        self.mem_write_u16(0xFFFC, start_vector);
+    }
+
     pub fn load(&mut self, program: Vec<u8>) {
-        self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
-        self.mem_write_u16(0xFFFC, 0x8000);
+        // self.memory[0x8000..(0x8000 + program.len())].copy_from_slice(&program[..]);
+        // self.mem_write_u16(0xFFFC, 0x8000);
+        self.load_custom_program(program, 0x8000);
     }
 
     pub fn run(&mut self) {
@@ -151,6 +159,8 @@ impl CPU {
                 0x88 => self.decrement_register(&RegisterID::Y),
                 0xE8 => self.increment_register(&RegisterID::X),
                 0xC8 => self.increment_register(&RegisterID::Y),
+                0x0A => self.acc_shift_left(),
+                0x06 | 0x16 | 0x0E | 0x1E => self.mem_shift_left(&ins.addressing_mode),
                 _ => todo!("Opcode [0x{:0X}] is invalid or unimplemented", opcode)
 
             }
@@ -203,6 +213,10 @@ impl CPU {
             _ => panic!("Implied addressed instruction should not be reading an address")
         }
 
+    }
+
+    fn page_crossed(&self, target_addr: u16) -> bool {
+        (self.pc >> 8) != (target_addr >> 8)
     }
 
     fn set_negative_and_zero_bits(&mut self, value: u8) {
@@ -289,6 +303,34 @@ impl CPU {
         }
 
         // TODO: ? Set overflow flag if sign bit is incorrect???
+
+    }
+
+    fn acc_shift_left(&mut self) {
+        
+        if self.acc & 0b1000_0000 > 0 {
+            self.set_flag(CARRY_FLAG);
+        }
+
+        self.acc = self.acc << 1;
+
+        self.set_negative_and_zero_bits(self.acc);
+
+    }
+
+    fn mem_shift_left(&mut self, addressing_mode: &AddressingMode) {
+
+        let address = self.get_operand_address(addressing_mode);
+        let mut data = self.mem_read_u8(address);
+        
+        if data & 0b1000_0000 > 0 {
+            self.set_flag(CARRY_FLAG);
+        }
+
+        data = data << 1;
+
+        self.set_negative_and_zero_bits(data);
+        self.mem_write_u8(address, data);
 
     }
 
@@ -409,7 +451,6 @@ impl CPU {
 mod tests {
 
     use std::vec;
-
     use super::*;
 
     #[test]
@@ -447,6 +488,18 @@ mod tests {
         assert_eq!(cpu.x, 0);
         assert_eq!(cpu.y, 0);
         assert_eq!(cpu.status, 0);
+
+    }
+
+    #[test]
+    fn test_mem_page_crossed() {
+
+        let mut cpu = CPU::new();
+
+        cpu.pc = 0xFF;
+
+        assert!(!cpu.page_crossed(0xFE));
+        assert!(cpu.page_crossed(0x100));
 
     }
 
@@ -712,6 +765,42 @@ mod tests {
         cpu.load_and_run(program);
 
         assert_eq!(cpu.acc, 0b1010_0000);
+
+    }
+
+    #[test]
+    fn test_asl_acc() {
+        
+        let mut cpu = CPU::new();
+        let program = vec![0xA9, 0b0101_0101, 0x0A, 0x00];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.acc, 0b1010_1010);
+        assert_eq!(cpu.status & CARRY_FLAG, 0);
+
+        let program = vec![0xA9, 0b1010_1010, 0x0A, 0x00];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.acc, 0b0101_0100);
+        assert_eq!(cpu.status & CARRY_FLAG, CARRY_FLAG);
+
+    }
+
+    #[test]
+    fn test_asl_mem() {
+        
+        let mut cpu = CPU::new();
+        let program = vec![0xA9, 0b0101_0101, 0x0E, 0x01, 0x80, 0xAD, 0x01, 0x80, 0x00];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.acc, 0b1010_1010);
+        assert_eq!(cpu.status & CARRY_FLAG, 0);
+
+        let program = vec![0xA9, 0b1010_1010, 0x0E, 0x01, 0x80, 0xAD, 0x01, 0x80, 0x00];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.acc, 0b0101_0100);
+        assert_eq!(cpu.status & CARRY_FLAG, CARRY_FLAG);
 
     }
 
