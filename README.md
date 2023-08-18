@@ -1,5 +1,7 @@
 # Ferricom
 
+![Unit Tests and Coverage](https://github.com/StableCrimson/ferricom/.github/workflows/test_coverage.yml/badge.svg)
+
 Attempting to write a NES emulator in Rust
 
 I have never written an emulator before, and Rust is a fairly new language to me. So I am very much
