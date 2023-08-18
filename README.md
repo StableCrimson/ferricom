@@ -1,6 +1,6 @@
 # Ferricom
 
-![Unit Tests and Coverage](https://github.com/StableCrimson/ferricom/actions/workflows/test_coverage.yml/badge.svg)
+![Unit Tests and Coverage](https://github.com/StableCrimson/ferricom/actions/workflows/test_coverage.yml/badge.svg?event=push)
 
 Attempting to write a NES emulator in Rust
 
