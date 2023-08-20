@@ -3,24 +3,61 @@ use lazy_static::lazy_static;
 use std::collections::HashMap;
 
 pub struct Instruction {
-  pub opcode: u8,
-  pub ins: &'static str,
-  pub bytes: u8,
-  pub cycles: u8,
-  pub addressing_mode: AddressingMode
+    pub opcode: u8,
+    pub ins: &'static str,
+    pub bytes: u8,
+    pub cycles: u8,
+    pub addressing_mode: AddressingMode,
 }
 
 impl Instruction {
-  pub fn new(opcode: u8, ins: &'static str, bytes: u8, cycles: u8, addressing_mode: AddressingMode) -> Instruction {
-    Instruction {
-      opcode,
-      ins,
-      bytes,
-      cycles,
-      addressing_mode
+    pub fn new(
+        opcode: u8,
+        ins: &'static str,
+        bytes: u8,
+        cycles: u8,
+        addressing_mode: AddressingMode,
+    ) -> Instruction {
+        Instruction {
+            opcode,
+            ins,
+            bytes,
+            cycles,
+            addressing_mode,
+        }
     }
-  }
 }
+
+// pub struct Opcode {
+//   pub opcode: u8,
+//   pub ins: &'static str,
+//   pub cycles: u8,
+//   pub operation: fn (&mut CPU),
+//   pub addressing_mode: AddressingMode
+// }
+
+// impl Opcode {
+
+//   fn new(opcode: u8, ins: &'static str, cycles: u8, operation: fn (&mut CPU), addressing_mode: AddressingMode) -> Opcode {
+//     Opcode {
+//       opcode: opcode,
+//       ins: ins,
+//       cycles: cycles,
+//       operation: operation,
+//       addressing_mode: addressing_mode
+//     }
+//   }
+
+//   pub fn execute(self, cpu: &mut CPU) {
+//     (self.operation)(cpu);
+//     cpu.cycle_count += self.cycles as u64;
+//   }
+
+// }
+
+// const sample_instruction_set: Vec<Opcode> = vec![
+//   Opcode::new( 0x00, "BRK", 7, CPU::decrement_register , AddressingMode::Implied )
+// ];
 
 lazy_static! {
 
@@ -36,12 +73,6 @@ lazy_static! {
     Instruction::new(0x61, "ADC", 2, 6, AddressingMode::IndirectX), // TODO: +1 cpu cycle if page is crossed
     Instruction::new(0x71, "ADC", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
 
-    Instruction::new(0x0A, "ASL", 1, 2, AddressingMode::Implied), // ! This kinda doesn't have an addressing mode. It operates directly on the accumulator
-    Instruction::new(0x06, "ASL", 2, 5, AddressingMode::ZeroPage),
-    Instruction::new(0x16, "ASL", 2, 6, AddressingMode::ZeroPageX),
-    Instruction::new(0x0E, "ASL", 3, 6, AddressingMode::Absolute),
-    Instruction::new(0x1E, "ASL", 3, 7, AddressingMode::AbsoluteX),
-
     Instruction::new(0x29, "AND", 2, 2, AddressingMode::Immediate),
     Instruction::new(0x25, "AND", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0x35, "AND", 2, 4, AddressingMode::ZeroPageX),
@@ -50,6 +81,21 @@ lazy_static! {
     Instruction::new(0x39, "AND", 3, 4, AddressingMode::AbsoluteY), // TODO: +1 cpu cycle if page is crossed
     Instruction::new(0x21, "AND", 2, 6, AddressingMode::IndirectX),
     Instruction::new(0x31, "AND", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
+
+    Instruction::new(0x0A, "ASL", 1, 2, AddressingMode::None),
+    Instruction::new(0x06, "ASL", 2, 5, AddressingMode::ZeroPage),
+    Instruction::new(0x16, "ASL", 2, 6, AddressingMode::ZeroPageX),
+    Instruction::new(0x0E, "ASL", 3, 6, AddressingMode::Absolute),
+    Instruction::new(0x1E, "ASL", 3, 7, AddressingMode::AbsoluteX),
+
+    Instruction::new(0x90, "BCC", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
+    Instruction::new(0xB0, "BCS", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
+    Instruction::new(0xF0, "BEQ", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
+    Instruction::new(0xD0, "BNE", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
+    Instruction::new(0x30, "BMI", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
+    Instruction::new(0x10, "BPL", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
+    Instruction::new(0x50, "BVC", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
+    Instruction::new(0x70, "BVS", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
 
     Instruction::new(0x24, "BIT", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0x2C, "BIT", 3, 4, AddressingMode::Absolute),
@@ -102,6 +148,12 @@ lazy_static! {
     Instruction::new(0xB4, "LDY", 2, 4, AddressingMode::ZeroPageX),
     Instruction::new(0xAC, "LDY", 3, 4, AddressingMode::Absolute),
     Instruction::new(0xBC, "LDY", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
+
+    Instruction::new(0x4A, "LSR", 1, 2, AddressingMode::None),
+    Instruction::new(0x46, "LSR", 2, 5, AddressingMode::ZeroPage),
+    Instruction::new(0x56, "LSR", 2, 6, AddressingMode::ZeroPageX),
+    Instruction::new(0x4E, "LSR", 3, 6, AddressingMode::Absolute),
+    Instruction::new(0x5E, "LSR", 3, 7, AddressingMode::AbsoluteX),
 
     Instruction::new(0xEA, "NOP", 1, 2, AddressingMode::Implied),
 

@@ -8,17 +8,40 @@ I have never written an emulator before, and Rust is a fairly new language to me
 a beginner. This isn't a project where finishing is the goal, the main point is to learn.
 If this project helps you write your own emulator or learn Rust, then even better.
 
+## Roadmap (WIP)
+
+- [ ] CPU and all instructions
+- [ ] Memory into its own module
+- [ ] ROM loading
+- [ ] PPU (Basic)
+- [ ] Input (Basic)
+- [ ] APU
+- [ ] PPU (Advanced)
+- [ ] Build for multiple platforms
+- [ ] GUI
+- [ ] Input remapping / gamepad detection
+- [ ] Save files and save states
+
 ## CPU Status
 
-82/256 instructions implemented
+100/256 instructions implemented
 
 - [ ] Stack implemented
-- [ ] Detecting if a page is crossed
+- [x] Detecting if a page is crossed
+- [x] Branching instructions
 - [ ] Extra cycle on crossed page for certain instructions
+- [ ] Logging (Needed at this stage for test ROMs)
 - [ ] Cycle accuracy tests
-- [ ] Logging
+- [ ] Passes test ROMs (Instruction set)
 
-## Resources
+### Misc To-Do
+
+- [ ] Inline docs and tests for `cargo doc`
+- [ ] Disassembler
+- [ ] Actions also run linting and formatting (Once the emulator is actually usable)
+- [ ] Semver
+
+### Resources
 
 - [Rust NES Emu Blog](https://bugzmanov.github.io/nes_ebook/)
 - [6502 Instruction set](https://www.nesdev.org/obelisk-6502-guide/instructions.html)
