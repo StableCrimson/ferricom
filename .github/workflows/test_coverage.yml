@@ -10,7 +10,16 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  Linting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Linting and Formatting
+        run: |
+          cargo clippy
+          cargo fmt --check
   Tests-and-Coverage:
+    needs: [Linting]
     runs-on:                    ubuntu-latest
     container:
       image:                    xd009642/tarpaulin:develop-nightly
