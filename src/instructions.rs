@@ -122,8 +122,27 @@ lazy_static! {
     Instruction::new(0xC4, "CPY", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0xCC, "CPY", 3, 4, AddressingMode::Absolute),
 
+    Instruction::new(0xC6, "DEC", 2, 5, AddressingMode::ZeroPage),
+    Instruction::new(0xD6, "DEC", 2, 6, AddressingMode::ZeroPageX),
+    Instruction::new(0xCE, "DEC", 3, 6, AddressingMode::Absolute),
+    Instruction::new(0xDE, "DEC", 3, 7, AddressingMode::AbsoluteX),
+    
     Instruction::new(0xCA, "DEX", 1, 2, AddressingMode::Implied),
     Instruction::new(0x88, "DEY", 1, 2, AddressingMode::Implied),
+
+    Instruction::new(0x49, "EOR", 2, 2, AddressingMode::Immediate),
+    Instruction::new(0x45, "EOR", 2, 3, AddressingMode::ZeroPage),
+    Instruction::new(0x55, "EOR", 2, 4, AddressingMode::ZeroPageX),
+    Instruction::new(0x4D, "EOR", 3, 4, AddressingMode::Absolute),
+    Instruction::new(0x5D, "EOR", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x59, "EOR", 3, 4, AddressingMode::AbsoluteY),
+    Instruction::new(0x41, "EOR", 2, 6, AddressingMode::IndirectX), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x51, "EOR", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
+
+    Instruction::new(0xE6, "INC", 2, 5, AddressingMode::ZeroPage),
+    Instruction::new(0xF6, "INC", 2, 6, AddressingMode::ZeroPageX),
+    Instruction::new(0xEE, "INC", 3, 6, AddressingMode::Absolute),
+    Instruction::new(0xFE, "INC", 3, 7, AddressingMode::AbsoluteX),
 
     Instruction::new(0xE8, "INX", 1, 2, AddressingMode::Implied),
     Instruction::new(0xC8, "INY", 1, 2, AddressingMode::Implied),

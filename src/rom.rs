@@ -5,7 +5,7 @@ const CHR_ROM_PAGE_SIZE: usize = 8192;
 
 /// iNESVersion::Indeterminate means that the file is either iNES 0.7 or iNES Archaic.
 /// Right now I do not dileniate between the two because ferricom currently only supports iNES 1.
-/// While iNES 2 is not natively supported, it's backwards compatibility with iNES 1 allows it to be
+/// While iNES 2 is not natively supported, its backwards compatibility with iNES 1 allows it to be
 /// used. As such, it will load, but you will recieve a warning when loading the ROM that the unique features
 /// of iNES 2 will not be used until specific support for it is added.
 #[allow(non_camel_case_types)]
@@ -33,7 +33,7 @@ pub struct ROM {
 impl ROM {
 
   #[cfg(not(tarpaulin_include))]
-  pub fn new(byte_code: &Vec<u8>) -> ROM {
+  pub fn new(byte_code: &[u8]) -> ROM {
 
     let header = ROM::retrieve_and_verify_header(byte_code).unwrap_or_else(|msg| {
       //TODO: Make a logging error + exit(1) statement once I figure out how I want logging
@@ -82,9 +82,9 @@ impl ROM {
   
   }
 
-  fn retrieve_and_verify_header(byte_code: &Vec<u8>) -> Result<&[u8], &str> {
+  fn retrieve_and_verify_header(byte_code: &[u8]) -> Result<&[u8], &str> {
 
-    let header = match byte_code.get(0..HEADER_SIZE as usize) {
+    let header = match byte_code.get(0..HEADER_SIZE) {
       Some(header) => header,
       None => return Err("Error reading ROM header. ROM may be malformed")
     };
@@ -103,14 +103,14 @@ impl ROM {
 
       match header[0x07] & 0x0C {
 
-        0x08 => return iNESVersion::iNES_2,
-        0x04 => return iNESVersion::iNES_Archaic,
+        0x08 => iNESVersion::iNES_2,
+        0x04 => iNESVersion::iNES_Archaic,
         0x00 => if header[12..=15] == vec![0, 0, 0, 0] { 
-          return iNESVersion::iNES_1 
+          iNESVersion::iNES_1 
         } else { 
-          return iNESVersion::Indeterminate 
+          iNESVersion::Indeterminate 
         },
-        _ => return iNESVersion::Indeterminate
+        _ => iNESVersion::Indeterminate
 
       }
   }
@@ -127,11 +127,16 @@ impl ROM {
       return ScreenMirroring::FourScreen;
     }
 
-    return if control_byte & 0b1 > 0 { ScreenMirroring::Vertical } else { ScreenMirroring::Horizontal }
+    if control_byte & 0b1 > 0 {
+      ScreenMirroring::Vertical
+    } else {
+      ScreenMirroring::Horizontal
+    }
 
   }
 }
 
+#[cfg(test)]
 mod tests {
 
   use super::*;

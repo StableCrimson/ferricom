@@ -175,6 +175,8 @@ impl CPU {
                 0x88 => self.decrement_register(&RegisterID::Y),
                 0xE8 => self.increment_register(&RegisterID::X),
                 0xC8 => self.increment_register(&RegisterID::Y),
+                0xE6 | 0xF6 | 0xEE | 0xFE => self.increment_memory(&ins.addressing_mode),
+                0xC6 | 0xD6 | 0xCE | 0xDE => self.decrement_memory(&ins.addressing_mode),
                 0x0A => self.acc_shift_left(),
                 0x4A => self.acc_shift_right(),
                 0x06 | 0x16 | 0x0E | 0x1E => self.mem_shift_left(&ins.addressing_mode),
@@ -187,6 +189,7 @@ impl CPU {
                 0x10 => self.branch_if_flag_clear(NEGATIVE_FLAG),
                 0x70 => self.branch_if_flag_set(OVERFLOW_FLAG),
                 0x50 => self.branch_if_flag_clear(OVERFLOW_FLAG),
+                0x49 | 0x45 | 0x55 | 0x4D | 0x5D | 0x59 | 0x41 | 0x51 => self.exclusive_or(&ins.addressing_mode),
                 _ => todo!("Opcode [0x{:0X}] is invalid or unimplemented", opcode)
 
             }
@@ -255,7 +258,7 @@ impl CPU {
             self.status &= !ZERO_FLAG;
         }
 
-        if value & 0b1000_0000 != 0 {
+        if value & 0b1000_0000 == 0b1000_0000 {
             self.status |= NEGATIVE_FLAG;
         } else {
             self.status &= !NEGATIVE_FLAG;
@@ -315,6 +318,38 @@ impl CPU {
         let data = (*register_ref).wrapping_sub(1);
         *register_ref = data;
         self.set_negative_and_zero_bits(data);
+
+    }
+
+    fn increment_memory(&mut self, addressing_mode: &AddressingMode) {
+
+        let target_addr = self.get_operand_address(addressing_mode);
+        let mut data = self.mem_read_u8(target_addr);
+        
+        data = data.wrapping_add(1);
+
+        self.mem_write_u8(target_addr, data);
+        self.set_negative_and_zero_bits(data);
+    }
+
+    fn decrement_memory(&mut self, addressing_mode: &AddressingMode) {
+
+        let target_addr = self.get_operand_address(addressing_mode);
+        let mut data = self.mem_read_u8(target_addr);
+        
+        data = data.wrapping_sub(1);
+
+        self.mem_write_u8(target_addr, data);
+        self.set_negative_and_zero_bits(data);
+    }
+
+    fn exclusive_or(&mut self, addressing_mode: &AddressingMode) {
+
+        let target_addr = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(target_addr);
+
+        self.acc ^= data;
+        self.set_negative_and_zero_bits(self.acc);
 
     }
 
@@ -1198,6 +1233,42 @@ mod tests {
     }
 
     #[test]
+    fn test_dec() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xCE, 0x04, 0x80, 0x00, 0b1111_1111];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.memory[0x8004], 0b1111_1110);
+        assert_eq!(cpu.status & NEGATIVE_FLAG, NEGATIVE_FLAG);
+
+    }
+
+    #[test]
+    fn test_eor() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA9, 0b1111_1111, 0x49, 0b0101_0101];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.acc, 0b1010_1010);
+        assert_eq!(cpu.status & NEGATIVE_FLAG, NEGATIVE_FLAG);
+
+    }
+
+    #[test]
+    fn test_inc() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xEE, 0x04, 0x80, 0x00, 0b1111_1111];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.memory[0x8004], 0x00);
+        assert_eq!(cpu.status & ZERO_FLAG, ZERO_FLAG);
+
+    }
+
+    #[test]
     fn test_lda_immediate() {
 
         let mut cpu = CPU::new();
@@ -1567,7 +1638,7 @@ mod tests {
         cpu.run();
 
         assert_eq!(cpu.x, 128);
-        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert_eq!(cpu.status & NEGATIVE_FLAG, NEGATIVE_FLAG);
 
     }
 
@@ -1584,7 +1655,7 @@ mod tests {
         cpu.run();
 
         assert_eq!(cpu.y, 128);
-        assert!(cpu.status & NEGATIVE_FLAG > 0);
+        assert_eq!(cpu.status & NEGATIVE_FLAG, NEGATIVE_FLAG);
 
     }
 
