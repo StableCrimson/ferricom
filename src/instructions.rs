@@ -28,6 +28,7 @@ impl Instruction {
     }
 }
 
+// TODO: Maybe in the future?
 // pub struct Opcode {
 //   pub opcode: u8,
 //   pub ins: &'static str,
@@ -147,6 +148,11 @@ lazy_static! {
     Instruction::new(0xE8, "INX", 1, 2, AddressingMode::Implied),
     Instruction::new(0xC8, "INY", 1, 2, AddressingMode::Implied),
 
+    Instruction::new(0x4C, "JMP", 3, 3, AddressingMode::Absolute),
+    Instruction::new(0x6C, "JMP", 3, 5, AddressingMode::Indirect),
+
+    Instruction::new(0x20, "JSR", 3, 6, AddressingMode::Absolute),
+
     Instruction::new(0xA9, "LDA", 2, 2, AddressingMode::Immediate),
     Instruction::new(0xA5, "LDA", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0xB5, "LDA", 2, 4, AddressingMode::ZeroPageX),
@@ -175,6 +181,8 @@ lazy_static! {
     Instruction::new(0x5E, "LSR", 3, 7, AddressingMode::AbsoluteX),
 
     Instruction::new(0xEA, "NOP", 1, 2, AddressingMode::Implied),
+
+    Instruction::new(0x60, "RTS", 1, 6, AddressingMode::Implied),
 
     Instruction::new(0x38, "SEC", 1, 2, AddressingMode::Implied),
     Instruction::new(0xF8, "SED", 1, 2, AddressingMode::Implied),

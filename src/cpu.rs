@@ -63,7 +63,7 @@ impl CPU {
 
         CPU {
             pc: 0x8000,
-            sp: 0,
+            sp: 0xFF,
             acc: 0,
             x: 0,
             y: 0,
@@ -189,6 +189,9 @@ impl CPU {
                 0x10 => self.branch_if_flag_clear(NEGATIVE_FLAG),
                 0x70 => self.branch_if_flag_set(OVERFLOW_FLAG),
                 0x50 => self.branch_if_flag_clear(OVERFLOW_FLAG),
+                0x4C | 0x6C => self.jump(&ins.addressing_mode),
+                0x20 => self.jump_to_subroutine(&ins.addressing_mode),
+                0x60 => self.return_from_subroutine(),
                 0x49 | 0x45 | 0x55 | 0x4D | 0x5D | 0x59 | 0x41 | 0x51 => self.exclusive_or(&ins.addressing_mode),
                 _ => todo!("Opcode [0x{:0X}] is invalid or unimplemented", opcode)
 
@@ -351,6 +354,62 @@ impl CPU {
         self.acc ^= data;
         self.set_negative_and_zero_bits(self.acc);
 
+    }
+
+    fn stack_push_u8(&mut self, value: u8) {
+        let stack_addr = 0x0100 | self.sp as u16;
+        self.mem_write_u8(stack_addr, value);
+        self.sp -= 1;
+    }
+
+    fn stack_pop_u8(&mut self) -> u8 {
+        self.sp += 1;
+        let stack_addr = 0x0100 | self.sp as u16;
+        self.mem_read_u8(stack_addr)
+    }
+
+    fn stack_push_u16(&mut self, addr: u16) {
+
+        let msb = (addr >> 8) as u8;
+        let lsb = (addr & 0xFF) as u8;
+
+        self.stack_push_u8(lsb);
+        self.stack_push_u8(msb);
+
+    }
+
+    fn stack_pop_u16(&mut self) -> u16 {
+        let msb = self.stack_pop_u8() as u16;
+        let lsb = self.stack_pop_u8() as u16;
+        (msb << 8) | lsb
+    }
+
+    fn jump(&mut self, addressing_mode: &AddressingMode) {
+        let target_addr = self.get_operand_address(addressing_mode);
+        self.pc = target_addr;
+
+        // TODO: There is a bug in the 6502 that involves getting the address on a page boundary
+
+    }
+
+    fn jump_to_subroutine(&mut self, addressing_mode: &AddressingMode) {
+
+        // We want to return to the instruction AFTER this
+        // because otherwise we'll just come back to the
+        // JSR instruction and loop
+        // We're doing +2 (because we read 2 bytes after the instruction)
+        // and -1 because we want to store the target return-1
+        let return_addr = self.pc + 1;
+        self.stack_push_u16(return_addr);
+
+        let target_addr = self.get_operand_address(addressing_mode);
+        self.pc = target_addr;
+
+    }
+
+    fn return_from_subroutine(&mut self) {
+        let target_addr = self.stack_pop_u16();
+        self.pc = target_addr + 1;
     }
 
     // ! Really wanted to do a guardian clause instead, but tarpaulin wasn't covering the early return
@@ -587,7 +646,7 @@ mod tests {
         let cpu = CPU::default();
 
         assert_eq!(cpu.pc, 0x8000);
-        assert_eq!(cpu.sp, 0);
+        assert_eq!(cpu.sp, 0xFF);
         assert_eq!(cpu.acc, 0);
         assert_eq!(cpu.x, 0);
         assert_eq!(cpu.y, 0);
@@ -601,7 +660,7 @@ mod tests {
         let cpu = CPU::new();
 
         assert_eq!(cpu.pc, 0x8000);
-        assert_eq!(cpu.sp, 0);
+        assert_eq!(cpu.sp, 0xFF);
         assert_eq!(cpu.acc, 0);
         assert_eq!(cpu.x, 0);
         assert_eq!(cpu.y, 0);
@@ -1269,6 +1328,38 @@ mod tests {
     }
 
     #[test]
+    fn test_jmp() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0x4C, 0xEF, 0xFE];
+        cpu.load_and_run(program);
+
+        // The reason that it's 0xFEF0 is because
+        // we jump to 0xFEEF and then read the next
+        // instruction which is BRK so the final state
+        // is 0xFEEF + 1
+        assert_eq!(cpu.pc, 0xFEF0);
+
+    }
+
+    #[test]
+    fn test_jsr() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0x20, 0xEF, 0xFE];
+        cpu.load_and_run(program);
+
+        // The reason that it's 0xFEF0 is because
+        // we jump to 0xFEEF and then read the next
+        // instruction which is BRK so the final state
+        // is 0xFEEF + 1
+        assert_eq!(cpu.pc, 0xFEF0);
+        assert_eq!(cpu.sp, 0xFD);
+        assert_eq!(cpu.stack_pop_u16(), 0x8002);
+
+    }
+
+    #[test]
     fn test_lda_immediate() {
 
         let mut cpu = CPU::new();
@@ -1467,6 +1558,20 @@ mod tests {
 
         assert_eq!(cpu.acc, 0xC0);
         assert_eq!(cpu.x, 0xC1);
+
+    }
+
+    #[test]
+    fn test_rts() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0x60, 0xEF, 0xFE];
+        cpu.load(program);
+        cpu.stack_push_u16(0x8002);
+        cpu.run();
+
+        assert_eq!(cpu.pc, 0x8004);
+        assert_eq!(cpu.sp, 0xFF); // Stack should be empty now
 
     }
 

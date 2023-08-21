@@ -24,9 +24,9 @@ If this project helps you write your own emulator or learn Rust, then even bette
 
 ## CPU Status
 
-116/256 opcodes implemented
+120/256 opcodes implemented
 
-- [ ] Stack implemented
+- [x] Stack implemented
 - [x] Detecting if a page is crossed
 - [x] Branching instructions
 - [ ] Extra cycle on crossed page for certain instructions
