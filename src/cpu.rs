@@ -90,12 +90,14 @@ impl CPU {
     #[cfg(not(tarpaulin_include))]
     pub fn print_state(&self) {
 
+        let stack_addr = self.get_stack_pointer_addr();
+
         println!("Program counter:  {:0X}", self.pc);
-        println!("Stack pointer:    {:0X}", self.sp);
+        println!("Stack pointer:    {:0X}", stack_addr);
         println!("Accumulator:      {:0X}", self.acc);
         println!("X register:       {:0X}", self.x);
         println!("Y register:       {:0X}", self.y);
-        println!("Memory at SP:     {:0X}", self.memory[self.sp as usize]);
+        println!("Memory at SP:     {:0X}", self.mem_read_u8(stack_addr));
         println!("Status bits:      NV-BDIZC");
         println!("Status bits:    {:#010b}", self.status);
 
@@ -262,7 +264,7 @@ impl CPU {
         (self.pc & 0xFF00) != (target_addr & 0xFF00)
     }
 
-    fn mem_read_u8(&mut self, addr: u16) -> u8 {
+    fn mem_read_u8(&self, addr: u16) -> u8 {
         self.memory[addr as usize]
     }
 
@@ -359,15 +361,19 @@ impl CPU {
 
     }
 
+    fn get_stack_pointer_addr(&self) -> u16 {
+        0x0100 | self.sp as u16
+    }
+
     fn stack_push_u8(&mut self, value: u8) {
-        let stack_addr = 0x0100 | self.sp as u16;
+        let stack_addr = self.get_stack_pointer_addr();
         self.mem_write_u8(stack_addr, value);
         self.sp -= 1;
     }
 
     fn stack_pop_u8(&mut self) -> u8 {
         self.sp += 1;
-        let stack_addr = 0x0100 | self.sp as u16;
+        let stack_addr = self.get_stack_pointer_addr();
         self.mem_read_u8(stack_addr)
     }
 
