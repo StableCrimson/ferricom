@@ -196,6 +196,18 @@ lazy_static! {
     Instruction::new(0x68, "PLA", 1, 4, AddressingMode::Implied),
     Instruction::new(0x28, "PLP", 1, 4, AddressingMode::Implied),
 
+    Instruction::new(0x2A, "ROL", 1, 2, AddressingMode::None),
+    Instruction::new(0x26, "ROL", 2, 5, AddressingMode::ZeroPage),
+    Instruction::new(0x36, "ROL", 2, 6, AddressingMode::ZeroPageX),
+    Instruction::new(0x2E, "ROL", 3, 6, AddressingMode::Absolute),
+    Instruction::new(0x3E, "ROL", 3, 7, AddressingMode::AbsoluteX),
+
+    Instruction::new(0x6A, "ROR", 1, 2, AddressingMode::None),
+    Instruction::new(0x66, "ROR", 2, 5, AddressingMode::ZeroPage),
+    Instruction::new(0x76, "ROR", 2, 6, AddressingMode::ZeroPageX),
+    Instruction::new(0x6E, "ROR", 3, 6, AddressingMode::Absolute),
+    Instruction::new(0x7E, "ROR", 3, 7, AddressingMode::AbsoluteX),
+
     Instruction::new(0x60, "RTS", 1, 6, AddressingMode::Implied),
 
     Instruction::new(0x38, "SEC", 1, 2, AddressingMode::Implied),
