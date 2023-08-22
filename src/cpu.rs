@@ -192,6 +192,11 @@ impl CPU {
                 0x4C | 0x6C => self.jump(&ins.addressing_mode),
                 0x20 => self.jump_to_subroutine(&ins.addressing_mode),
                 0x60 => self.return_from_subroutine(),
+                0x48 => self.stack_push_u8(self.acc),
+                0x08 => self.stack_push_u8(self.status),
+                0x68 => self.stack_pop_acc(),
+                0x28 => self.status = self.stack_pop_u8(),
+                0x09 | 0x05 | 0x15 | 0x0D | 0x1D | 0x19 | 0x01 | 0x11 => self.inclusive_or(&ins.addressing_mode),
                 0x49 | 0x45 | 0x55 | 0x4D | 0x5D | 0x59 | 0x41 | 0x51 => self.exclusive_or(&ins.addressing_mode),
                 _ => todo!("Opcode [0x{:0X}] is invalid or unimplemented", opcode)
 
@@ -346,6 +351,16 @@ impl CPU {
         self.set_negative_and_zero_bits(data);
     }
 
+    fn inclusive_or(&mut self, addressing_mode: &AddressingMode) {
+
+        let target_addr = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(target_addr);
+
+        self.acc |= data;
+        self.set_negative_and_zero_bits(self.acc);
+
+    }
+
     fn exclusive_or(&mut self, addressing_mode: &AddressingMode) {
 
         let target_addr = self.get_operand_address(addressing_mode);
@@ -382,6 +397,11 @@ impl CPU {
         let msb = self.stack_pop_u8() as u16;
         let lsb = self.stack_pop_u8() as u16;
         (msb << 8) | lsb
+    }
+
+    fn stack_pop_acc(&mut self) {
+        self.acc = self.stack_pop_u8();
+        self.set_negative_and_zero_bits(self.acc);
     }
 
     fn jump(&mut self, addressing_mode: &AddressingMode) {
@@ -1538,6 +1558,80 @@ mod tests {
         cpu.load_and_run(program);
 
         assert_eq!(cpu.pc, 0x8002)
+
+    }
+
+    #[test]
+    fn test_ora() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0x09, 0b1010_1010, 0x49, 0b0101_0101];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.acc, 0b1111_1111);
+        assert_eq!(cpu.status & NEGATIVE_FLAG, NEGATIVE_FLAG);
+
+    }
+
+    #[test]
+    fn test_pha() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0x48];
+
+        cpu.load(program);
+        cpu.acc = 0xFF;
+        cpu.run();
+
+        assert_eq!(cpu.sp, 0xFE); // Byte has been pushed to stack
+        assert_eq!(cpu.stack_pop_u8(), 0xFF);
+
+    }
+
+    #[test]
+    fn test_php() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0x08];
+
+        cpu.load(program);
+        cpu.set_flag(OVERFLOW_FLAG);
+        cpu.run();
+
+        assert_eq!(cpu.sp, 0xFE); // Byte has been pushed to stack
+        assert_eq!(cpu.stack_pop_u8(), OVERFLOW_FLAG);
+
+    }
+
+    #[test]
+    fn test_pla() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0x48, 0xA9, 0x11, 0x68];
+
+        cpu.load(program);
+        cpu.acc = 0xFF;
+        cpu.run();
+
+        assert_eq!(cpu.sp, 0xFF); // Byte has been popped from stack
+        assert_eq!(cpu.acc, 0xFF);
+        assert_eq!(cpu.status & NEGATIVE_FLAG, NEGATIVE_FLAG);
+
+    }
+
+    #[test]
+    fn test_plp() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0x08, 0x38, 0x28];
+
+        cpu.load(program);
+        cpu.set_flag(OVERFLOW_FLAG);
+        cpu.run();
+
+        assert_eq!(cpu.sp, 0xFF); // Byte has been popped from stack
+        assert_eq!(cpu.status & OVERFLOW_FLAG, OVERFLOW_FLAG);
+        assert_eq!(cpu.status & CARRY_FLAG, 0);
 
     }
 

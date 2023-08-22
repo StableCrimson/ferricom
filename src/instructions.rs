@@ -182,6 +182,20 @@ lazy_static! {
 
     Instruction::new(0xEA, "NOP", 1, 2, AddressingMode::Implied),
 
+    Instruction::new(0x09, "ORA", 2, 2, AddressingMode::Immediate),
+    Instruction::new(0x05, "ORA", 2, 3, AddressingMode::ZeroPage),
+    Instruction::new(0x15, "ORA", 2, 4, AddressingMode::ZeroPageX),
+    Instruction::new(0x0D, "ORA", 3, 4, AddressingMode::Absolute),
+    Instruction::new(0x1D, "ORA", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x19, "ORA", 3, 4, AddressingMode::AbsoluteY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x01, "ORA", 2, 6, AddressingMode::IndirectX),
+    Instruction::new(0x11, "ORA", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
+
+    Instruction::new(0x48, "PHA", 1, 3, AddressingMode::Implied),
+    Instruction::new(0x08, "PHP", 1, 3, AddressingMode::Implied),
+    Instruction::new(0x68, "PLA", 1, 4, AddressingMode::Implied),
+    Instruction::new(0x28, "PLP", 1, 4, AddressingMode::Implied),
+
     Instruction::new(0x60, "RTS", 1, 6, AddressingMode::Implied),
 
     Instruction::new(0x38, "SEC", 1, 2, AddressingMode::Implied),
