@@ -10,6 +10,7 @@ const DECIMAL_MODE_FLAG: u8 =       0b0000_1000;
 
 /* Bits 4 and 5 are unused */
 
+const BREAK_COMMAND_FLAG: u8 =      0b0010_0000;
 const OVERFLOW_FLAG: u8 =           0b0100_0000;
 const NEGATIVE_FLAG: u8 =           0b1000_0000;
 
@@ -148,6 +149,7 @@ impl CPU {
                 0x00 => return,
                 0xEA => (),
                 0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => self.add_with_carry(&ins.addressing_mode),
+                0xE9 | 0xE5 | 0xF5 | 0xED | 0xFD | 0xF9 | 0xE1 | 0xF1 => self.subtract_with_carry(&ins.addressing_mode),
                 0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => self.and(&ins.addressing_mode),
                 0x24 | 0x2C => self.bit(&ins.addressing_mode),
                 0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => self.compare_register(&ins.addressing_mode, &RegisterID::ACC),
@@ -197,6 +199,7 @@ impl CPU {
                 0x4C | 0x6C => self.jump(&ins.addressing_mode),
                 0x20 => self.jump_to_subroutine(&ins.addressing_mode),
                 0x60 => self.return_from_subroutine(),
+                0x40 => self.return_from_interrupt(),
                 0x48 => self.stack_push_u8(self.acc),
                 0x08 => self.stack_push_u8(self.status),
                 0x68 => self.stack_pop_acc(),
@@ -397,6 +400,12 @@ impl CPU {
         self.set_negative_and_zero_flags(self.acc);
     }
 
+    fn return_from_interrupt(&mut self) {
+        self.status = self.stack_pop_u8();
+        self.pc = self.stack_pop_u16();
+        self.clear_flag(BREAK_COMMAND_FLAG);
+    }
+
     fn jump(&mut self, addressing_mode: &AddressingMode) {
         let target_addr = self.get_operand_address(addressing_mode);
         self.pc = target_addr;
@@ -447,15 +456,23 @@ impl CPU {
 
         let address = self.get_operand_address(addressing_mode);
         let data = self.mem_read_u8(address);
-        self.acc = self.acc.wrapping_add(data);
+        let current_acc = self.acc;
+        self.acc = current_acc.wrapping_add(data);
 
         self.set_negative_and_zero_flags(self.acc);
+        self.set_overflow_and_carry_flags(false, current_acc.checked_add(data));
 
-        if self.acc <= data {
-            self.set_flag(CARRY_FLAG);
-        }
+    }
 
-        // TODO: ? Set overflow flag if sign bit is incorrect???
+    fn subtract_with_carry(&mut self, addressing_mode: &AddressingMode) {
+
+        let address = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(address);
+        let current_acc = self.acc;
+        self.acc = current_acc.wrapping_sub(data);
+
+        self.set_negative_and_zero_flags(self.acc);
+        self.set_overflow_and_carry_flags(true, current_acc.checked_sub(data));
 
     }
 
@@ -625,6 +642,28 @@ impl CPU {
             self.clear_flag(NEGATIVE_FLAG);
         }
 
+    }
+
+    fn set_overflow_and_carry_flags(&mut self, is_sub: bool, value: Option<u8>) {
+
+        match value {
+            Some(_) => {
+                self.clear_flag(OVERFLOW_FLAG);
+                if is_sub {
+                    self.set_flag(CARRY_FLAG);
+                } else {
+                    self.clear_flag(CARRY_FLAG);
+                }
+            },
+            None => {
+                self.set_flag(OVERFLOW_FLAG);
+                if is_sub {
+                    self.clear_flag(CARRY_FLAG);
+                } else {
+                    self.set_flag(CARRY_FLAG);
+                }
+            }
+        }
     }
 
     fn load_register(&mut self, addressing_mode: &AddressingMode, target_register: &RegisterID) {
@@ -1816,6 +1855,23 @@ mod tests {
     }
 
     #[test]
+    fn test_rti() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0x40];
+        cpu.load(program);
+        cpu.stack_push_u16(0xFAFA);
+        cpu.stack_push_u8(0b1000_0001);
+        cpu.run();
+
+        assert_eq!(cpu.pc, 0xFAFB);
+        assert_eq!(cpu.sp, 0xFF);
+        assert!(cpu.is_flag_set(NEGATIVE_FLAG));
+        assert!(cpu.is_flag_set(CARRY_FLAG));
+
+    }
+    
+    #[test]
     fn test_rts() {
 
         let mut cpu = CPU::new();
@@ -1826,6 +1882,22 @@ mod tests {
 
         assert_eq!(cpu.pc, 0x8004);
         assert_eq!(cpu.sp, 0xFF); // Stack should be empty now
+
+    }
+
+    #[test]
+    fn test_sbc() {
+
+        let mut cpu = CPU::new();
+        let program = vec![0xA9, 0xF0, 0xE9, 0x0F, 0x00];
+        cpu.load_and_run(program);
+
+        assert_eq!(cpu.acc, 0xE1);
+
+        let program = vec![0xA9, 0x00, 0xE9, 0x01, 0x00];
+        cpu.load_and_run(program);
+
+        assert!(cpu.is_flag_set(OVERFLOW_FLAG));
 
     }
 

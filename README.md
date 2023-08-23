@@ -24,9 +24,9 @@ If this project helps you write your own emulator or learn Rust, then even bette
 
 ## CPU Status
 
-142/256 opcodes implemented
+151/256 opcodes implemented
 
-- [ ] 151 Official opcodes
+- [x] 151 Official opcodes
 - [ ] 105 Illegal opcodes
 - [x] Stack implemented
 - [x] Detecting if a page is crossed
