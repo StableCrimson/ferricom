@@ -52,15 +52,6 @@ pub struct CPU {
 
 impl Default for CPU {
     fn default() -> Self {
-        Self::new()
-    }   
-}
-
-impl CPU {
-
-    /// Create a new 6502 CPU in its default state
-    pub fn new() -> CPU {
-
         CPU {
             pc: 0x8000,
             sp: 0xFF,
@@ -70,6 +61,14 @@ impl CPU {
             status: 0,
             memory: [0; 0x10000]
         }
+    }   
+}
+
+impl CPU {
+
+    /// Create a new 6502 CPU in its default state
+    pub fn new() -> Self {
+        Self::default()
     }
 
     /// Sets the CPU to the default state
@@ -187,14 +186,14 @@ impl CPU {
                 0x46 | 0x56 | 0x4E | 0x5E => self.mem_shift_right(&ins.addressing_mode),
                 0x26 | 0x36 | 0x2E | 0x3E => self.rotate_mem_left(&ins.addressing_mode),
                 0x66 | 0x76 | 0x6E | 0x7E => self.rotate_mem_right(&ins.addressing_mode),
-                0x90 => self.branch_if_flag_clear(CARRY_FLAG),
-                0xB0 => self.branch_if_flag_set(CARRY_FLAG),
-                0xF0 => self.branch_if_flag_set(ZERO_FLAG),
-                0xD0 => self.branch_if_flag_clear(ZERO_FLAG),
-                0x30 => self.branch_if_flag_set(NEGATIVE_FLAG),
-                0x10 => self.branch_if_flag_clear(NEGATIVE_FLAG),
-                0x70 => self.branch_if_flag_set(OVERFLOW_FLAG),
-                0x50 => self.branch_if_flag_clear(OVERFLOW_FLAG),
+                0xB0 => self.branch_if(self.is_flag_set(CARRY_FLAG)),
+                0xF0 => self.branch_if(self.is_flag_set(ZERO_FLAG)),
+                0x30 => self.branch_if(self.is_flag_set(NEGATIVE_FLAG)),
+                0x70 => self.branch_if(self.is_flag_set(OVERFLOW_FLAG)),
+                0x90 => self.branch_if(!self.is_flag_set(CARRY_FLAG)),
+                0xD0 => self.branch_if(!self.is_flag_set(ZERO_FLAG)),
+                0x10 => self.branch_if(!self.is_flag_set(NEGATIVE_FLAG)),
+                0x50 => self.branch_if(!self.is_flag_set(OVERFLOW_FLAG)),
                 0x4C | 0x6C => self.jump(&ins.addressing_mode),
                 0x20 => self.jump_to_subroutine(&ins.addressing_mode),
                 0x60 => self.return_from_subroutine(),
@@ -401,9 +400,7 @@ impl CPU {
     fn jump(&mut self, addressing_mode: &AddressingMode) {
         let target_addr = self.get_operand_address(addressing_mode);
         self.pc = target_addr;
-
         // TODO: There is a bug in the 6502 that involves getting the address on a page boundary
-
     }
 
     fn jump_to_subroutine(&mut self, addressing_mode: &AddressingMode) {
@@ -427,28 +424,9 @@ impl CPU {
     }
 
     // ! Really wanted to do a guardian clause instead, but tarpaulin wasn't covering the early return
-    fn branch_if_flag_set(&mut self, flag_alias: u8) {
+    fn branch_if(&mut self, condition: bool) {
 
-        if self.is_flag_set(flag_alias) {
-
-            let target_addr = self.get_operand_address(&AddressingMode::Relative);
-
-            if self.page_crossed(target_addr) {
-                // TODO: When cycles are implemented
-                // TODO: Logger
-                println!("Page was crossed! Current page: 0x{:0X} New page: 0x{:0X}", (self.pc & 0xFF00) >> 8, (target_addr & 0xFF00) >> 8);
-
-            }
-
-            self.pc = target_addr;
-        }
-
-    }
-
-    // ! Really wanted to do a guardian clause instead, but tarpaulin wasn't covering the early return
-    fn branch_if_flag_clear(&mut self, flag_alias: u8) {
-
-        if !self.is_flag_set(flag_alias) {
+        if condition {
             
             let target_addr = self.get_operand_address(&AddressingMode::Relative);
 
@@ -657,7 +635,7 @@ impl CPU {
             RegisterID::ACC => &mut self.acc,
             RegisterID::X => &mut self.x,
             RegisterID::Y => &mut self.y,
-            _ => panic!("Stack pointer should not be a target for loading")
+            RegisterID::SP => panic!("Stack pointer should not be a target for loading")
         };
         
         *register_ref = data;
@@ -671,7 +649,7 @@ impl CPU {
             RegisterID::ACC => self.acc,
             RegisterID::X => self.x,
             RegisterID::Y => self.y,
-            _ => panic!("Stack pointer should not be a target for storing")
+            RegisterID::SP => panic!("Stack pointer should not be a target for storing")
         };
 
         let address = self.get_operand_address(addressing_mode);
@@ -733,7 +711,7 @@ impl CPU {
             RegisterID::ACC => self.acc,
             RegisterID::X => self.x,
             RegisterID::Y => self.y,
-            _ => panic!("Stack pointer should not be a target for comparing")
+            RegisterID::SP => panic!("Stack pointer should not be a target for comparing")
         };
 
         let result = register_value - data;

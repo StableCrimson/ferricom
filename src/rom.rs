@@ -3,11 +3,11 @@ const TRAINER_SIZE: usize = 512;
 const PRG_ROM_PAGE_SIZE: usize = 16384;
 const CHR_ROM_PAGE_SIZE: usize = 8192;
 
-/// iNESVersion::Indeterminate means that the file is either iNES 0.7 or iNES Archaic.
-/// Right now I do not dileniate between the two because ferricom currently only supports iNES 1.
-/// While iNES 2 is not natively supported, its backwards compatibility with iNES 1 allows it to be
+/// `iNESVersion::Indeterminate` means that the file is either `iNES` 0.7 or `iNES` Archaic.
+/// Right now I do not dileniate between the two because ferricom currently only supports `iNES` 1.
+/// While `iNES` 2 is not natively supported, its backwards compatibility with `iNES` 1 allows it to be
 /// used. As such, it will load, but you will recieve a warning when loading the ROM that the unique features
-/// of iNES 2 will not be used until specific support for it is added.
+/// of `iNES` 2 will not be used until specific support for it is added.
 #[allow(non_camel_case_types)]
 #[derive(PartialEq, Debug)]
 enum iNESVersion {
