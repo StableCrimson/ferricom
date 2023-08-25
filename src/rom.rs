@@ -1,13 +1,15 @@
+use log::{debug, warn, error};
+
 const HEADER_SIZE: usize = 16;
 const TRAINER_SIZE: usize = 512;
 const PRG_ROM_PAGE_SIZE: usize = 16384;
 const CHR_ROM_PAGE_SIZE: usize = 8192;
 
-/// iNESVersion::Indeterminate means that the file is either iNES 0.7 or iNES Archaic.
-/// Right now I do not dileniate between the two because ferricom currently only supports iNES 1.
-/// While iNES 2 is not natively supported, it's backwards compatibility with iNES 1 allows it to be
+/// `iNESVersion::Indeterminate` means that the file is either `iNES` 0.7 or `iNES` Archaic.
+/// Right now I do not dileniate between the two because ferricom currently only supports `iNES` 1.
+/// While `iNES` 2 is not natively supported, its backwards compatibility with `iNES` 1 allows it to be
 /// used. As such, it will load, but you will recieve a warning when loading the ROM that the unique features
-/// of iNES 2 will not be used until specific support for it is added.
+/// of `iNES` 2 will not be used until specific support for it is added.
 #[allow(non_camel_case_types)]
 #[derive(PartialEq, Debug)]
 enum iNESVersion {
@@ -33,10 +35,10 @@ pub struct ROM {
 impl ROM {
 
   #[cfg(not(tarpaulin_include))]
-  pub fn new(byte_code: &Vec<u8>) -> ROM {
+  pub fn new(byte_code: &[u8]) -> ROM {
 
     let header = ROM::retrieve_and_verify_header(byte_code).unwrap_or_else(|msg| {
-      //TODO: Make a logging error + exit(1) statement once I figure out how I want logging
+      error!("{msg}");
       panic!("ERROR: {msg}");
     });
   
@@ -44,35 +46,29 @@ impl ROM {
     let chr_rom_size = header[5] as usize * CHR_ROM_PAGE_SIZE;
     let version = ROM::get_ines_version(header);
     
-    // TODO: Make a log statement (debug?)
-    println!("iNES Version: {:?}", version);
+    debug!("iNES Version: {:?}", version);
   
     if version != iNESVersion::iNES_1 {
       if version != iNESVersion::iNES_2 {
-        //TODO: Make a logging error + exit(1) statement once I figure out how I want logging
-        panic!("ERROR: Currently only iNES V1 is supported.");
+        let msg = "ROM must be either iNES_1 or iNES_2!";
+        error!("{msg}");
+        panic!("ERROR: {msg}");
       }
-
-      println!("WARNING: iNES V2 is not officially supported, but will work as V1 because of backwards compatibility");
-
+      warn!("WARNING: iNES V2 is not officially supported, but will work as V1 because of backwards compatibility");
     }
   
     let trainer_present = ROM::has_trainer(header);
 
-    //TODO: Logging debug?
-    println!("Trainer is present: {trainer_present}");
-  
-    //TODO: Logging debug?
-    println!("PRG ROM is {prg_rom_size} bytes");
-    println!("CHR ROM is {chr_rom_size} bytes");
+    debug!("Trainer is present: {trainer_present}");
+    debug!("PRG ROM is 0x{:0X} bytes", prg_rom_size);
+    debug!("CHR ROM is 0x{:0X} bytes", prg_rom_size);
   
     let prg_rom_offset = HEADER_SIZE + if trainer_present { TRAINER_SIZE } else { 0 };
     let chr_rom_offset = prg_rom_offset + prg_rom_size;
   
     let screen_mapping = ROM::get_screen_mirroring(header);
 
-    //TODO: Logging debug?
-    println!("Screen mapping: {:?}", screen_mapping);
+    debug!("Screen mapping: {:?}", screen_mapping);
   
     ROM {
       prg_rom: byte_code[prg_rom_offset..(prg_rom_offset+prg_rom_size)].to_vec(),
@@ -82,9 +78,9 @@ impl ROM {
   
   }
 
-  fn retrieve_and_verify_header(byte_code: &Vec<u8>) -> Result<&[u8], &str> {
+  fn retrieve_and_verify_header(byte_code: &[u8]) -> Result<&[u8], &str> {
 
-    let header = match byte_code.get(0..HEADER_SIZE as usize) {
+    let header = match byte_code.get(0..HEADER_SIZE) {
       Some(header) => header,
       None => return Err("Error reading ROM header. ROM may be malformed")
     };
@@ -103,14 +99,14 @@ impl ROM {
 
       match header[0x07] & 0x0C {
 
-        0x08 => return iNESVersion::iNES_2,
-        0x04 => return iNESVersion::iNES_Archaic,
+        0x08 => iNESVersion::iNES_2,
+        0x04 => iNESVersion::iNES_Archaic,
         0x00 => if header[12..=15] == vec![0, 0, 0, 0] { 
-          return iNESVersion::iNES_1 
+          iNESVersion::iNES_1 
         } else { 
-          return iNESVersion::Indeterminate 
+          iNESVersion::Indeterminate 
         },
-        _ => return iNESVersion::Indeterminate
+        _ => iNESVersion::Indeterminate
 
       }
   }
@@ -127,11 +123,16 @@ impl ROM {
       return ScreenMirroring::FourScreen;
     }
 
-    return if control_byte & 0b1 > 0 { ScreenMirroring::Vertical } else { ScreenMirroring::Horizontal }
+    if control_byte & 0b1 > 0 {
+      ScreenMirroring::Vertical
+    } else {
+      ScreenMirroring::Horizontal
+    }
 
   }
 }
 
+#[cfg(test)]
 mod tests {
 
   use super::*;

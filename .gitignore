@@ -13,9 +13,13 @@ Cargo.lock
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 
-
 # Added by cargo
 /target
 
 # Because I'm working on MacOS
 .DS_Store
+
+.vscode/
+
+*.nes
+*.log

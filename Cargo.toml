@@ -8,3 +8,7 @@ description = "Experimental NES Emulator written in Rust"
 
 [dependencies]
 lazy_static = "*"
+log = "0.4.20"
+rand = "0.8.5"
+sdl2 = "0.35.2"
+simple-logging = "2.0.2"
