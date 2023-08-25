@@ -1,4 +1,5 @@
 use crate::instructions::{self};
+use log::info;
 /*
     Aliases for the flags in the 6502 status register.
     More information on these flags can be found here: https://www.nesdev.org/wiki/Status_flags
@@ -53,6 +54,7 @@ pub struct CPU {
 
 impl Default for CPU {
     fn default() -> Self {
+        let _ = simple_logging::log_to_file("cpu_trace.log", log::LevelFilter::Info);
         CPU {
             pc: 0x8000,
             sp: 0xFF,
@@ -128,8 +130,12 @@ impl CPU {
         self.load_custom_program(program, 0x8000);
     }
 
-    /// Begins execution
     pub fn run(&mut self) {
+        self.run_with_callback(|_| {});
+    }
+
+    /// Begins execution
+    pub fn run_with_callback<F>(&mut self, mut callback: F) where F: FnMut(&mut CPU), {
 
         let ins_set = &(*instructions::CPU_INSTRUCTION_SET);
 
@@ -143,6 +149,8 @@ impl CPU {
             let current_pc = self.pc;
 
             let ins = *ins_set.get(&opcode).unwrap_or_else(|| panic!("Instruction {} is invalid or unimplemented", opcode));
+
+            info!("{:04X}\t{}", self.pc-1, &ins.ins);
 
             match opcode {
 
@@ -213,10 +221,13 @@ impl CPU {
             if current_pc == self.pc {
                 self.pc += (ins.bytes-1) as u16;
             }
+
+            callback(self);
+
         }
     }
 
-    fn get_operand_address(&mut self, addressing_mode: &AddressingMode) -> u16 {
+    fn get_operand_address(&self, addressing_mode: &AddressingMode) -> u16 {
 
         match *addressing_mode {
 
@@ -255,22 +266,18 @@ impl CPU {
             },
             AddressingMode::Relative => {
                 let offset = self.mem_read_u8(self.pc) as i8;
-                self.pc.wrapping_add_signed(offset as i16)
+                self.pc.wrapping_add_signed(offset as i16).wrapping_add(1)
             }
             _ => panic!("Addressing mode {:?} instruction should not be reading an address", *addressing_mode)
         }
 
     }
 
-    fn page_crossed(&self, target_addr: u16) -> bool {
-        (self.pc & 0xFF00) != (target_addr & 0xFF00)
-    }
-
-    fn mem_read_u8(&self, addr: u16) -> u8 {
+    pub fn mem_read_u8(&self, addr: u16) -> u8 {
         self.memory[addr as usize]
     }
 
-    fn mem_read_u16(&mut self, addr: u16) -> u16 {
+    pub fn mem_read_u16(&self, addr: u16) -> u16 {
 
         let lsb = self.mem_read_u8(addr) as u16;
         let msb = self.mem_read_u8(addr+1) as u16;
@@ -280,11 +287,11 @@ impl CPU {
 
     }
 
-    fn mem_write_u8(&mut self, addr: u16, data: u8) {
+    pub fn mem_write_u8(&mut self, addr: u16, data: u8) {
         self.memory[addr as usize] = data;
     }
 
-    fn mem_write_u16(&mut self, addr: u16, data: u16) {
+    pub fn mem_write_u16(&mut self, addr: u16, data: u16) {
 
         let msb = (data >> 8) as u8;
         let lsb = data as u8;
@@ -409,7 +416,6 @@ impl CPU {
     fn jump(&mut self, addressing_mode: &AddressingMode) {
         let target_addr = self.get_operand_address(addressing_mode);
         self.pc = target_addr;
-        // TODO: There is a bug in the 6502 that involves getting the address on a page boundary
     }
 
     fn jump_to_subroutine(&mut self, addressing_mode: &AddressingMode) {
@@ -434,22 +440,9 @@ impl CPU {
 
     // ! Really wanted to do a guardian clause instead, but tarpaulin wasn't covering the early return
     fn branch_if(&mut self, condition: bool) {
-
         if condition {
-            
-            let target_addr = self.get_operand_address(&AddressingMode::Relative);
-
-            if self.page_crossed(target_addr) {
-                // TODO: When cycles are implemented
-                // TODO: Logger
-                println!("Page was crossed! Current page: 0x{:0X} New page: 0x{:0X}", (self.pc & 0xFF00) >> 8, (target_addr & 0xFF00) >> 8);
-
-            }
-
-            self.pc = target_addr;
-
+            self.pc = self.get_operand_address(&AddressingMode::Relative);
         }
-
     }
 
     fn add_with_carry(&mut self, addressing_mode: &AddressingMode) {
@@ -510,7 +503,7 @@ impl CPU {
         data <<= 1;
 
         self.set_negative_and_zero_flags(data);
-        self.mem_write_u8(address, data);
+        self.acc = data;
 
     }
 
@@ -753,18 +746,13 @@ impl CPU {
             RegisterID::SP => panic!("Stack pointer should not be a target for comparing")
         };
 
-        let result = register_value - data;
-
-        if register_value == data {
-            self.set_flag(ZERO_FLAG);
-        }
+        let result = register_value.wrapping_sub(data);
+        self.set_negative_and_zero_flags(result);
 
         if register_value >= data {
             self.set_flag(CARRY_FLAG);
-        }
-
-        if result & NEGATIVE_FLAG > 0 {
-            self.set_flag(NEGATIVE_FLAG);
+        } else {
+            self.clear_flag(CARRY_FLAG);
         }
 
     }
@@ -826,18 +814,6 @@ mod tests {
         assert_eq!(cpu.x, 0);
         assert_eq!(cpu.y, 0);
         assert_eq!(cpu.status, 0);
-
-    }
-
-    #[test]
-    fn test_mem_page_crossed() {
-
-        let mut cpu = CPU::new();
-
-        cpu.pc = 0xFF;
-
-        assert!(!cpu.page_crossed(0xFE));
-        assert!(cpu.page_crossed(0x100));
 
     }
 
@@ -1056,18 +1032,17 @@ mod tests {
         cpu.memory[0x99] = 0x78;
         cpu.memory[0x9A] = 0x56;
 
-        println!("Indirect X: {}", cpu.get_operand_address(&AddressingMode::Relative));
-        assert_eq!(cpu.get_operand_address(&AddressingMode::Relative), 0xF1);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::Relative), 0xF2);
 
         cpu.memory[0xF0] = 0b1111_1100;
-        assert_eq!(cpu.get_operand_address(&AddressingMode::Relative), 0b1110_1100);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::Relative), 0b1110_1101);
 
     }
 
     #[test]
     #[should_panic]
     fn test_get_operand_address_implied_panics() {
-        let mut cpu = CPU::new();
+        let cpu = CPU::new();
         cpu.get_operand_address(&AddressingMode::Implied);
     }
 
@@ -1155,13 +1130,13 @@ mod tests {
     fn test_asl_mem() {
         
         let mut cpu = CPU::new();
-        let program = vec![0xA9, 0b0101_0101, 0x0E, 0x01, 0x80, 0xAD, 0x01, 0x80, 0x00];
+        let program = vec![0xA9, 0b0101_0101, 0x0E, 0x01, 0x80];
         cpu.load_and_run(program);
 
         assert_eq!(cpu.acc, 0b1010_1010);
         assert!(!cpu.is_flag_set(CARRY_FLAG));
 
-        let program = vec![0xA9, 0b1010_1010, 0x0E, 0x01, 0x80, 0xAD, 0x01, 0x80, 0x00];
+        let program = vec![0xA9, 0b1010_1010, 0x0E, 0x01, 0x80];
         cpu.load_and_run(program);
 
         assert_eq!(cpu.acc, 0b0101_0100);
@@ -1178,7 +1153,7 @@ mod tests {
         let program = vec![0x90, 0b1111_1101];
         cpu.load_and_run(program);
 
-        assert_eq!(cpu.pc, 0x7FFF);
+        assert_eq!(cpu.pc, 0x8000);
 
         // Branch condition is NOT met
         let program = vec![0x90, 0b1111_1101];
@@ -1186,7 +1161,7 @@ mod tests {
         cpu.set_flag(CARRY_FLAG);
         cpu.run();
 
-        assert_eq!(cpu.pc, 0x8000);
+        assert_eq!(cpu.pc, 0x8003);
 
     }
 
@@ -1202,15 +1177,15 @@ mod tests {
         cpu.set_flag(CARRY_FLAG);
         cpu.run();
 
-        assert_eq!(cpu.pc, 0x7FFF);
+        assert_eq!(cpu.pc, 0x8000);
 
         // Branch condition is NOT met
-        let program = vec![0xB0, 0b1111_1101];
+        let program = vec![0xB0, 0b1111_1110];
         cpu.load(program);
         cpu.clear_flag(CARRY_FLAG);
         cpu.run();
 
-        assert_eq!(cpu.pc, 0x8000);
+        assert_eq!(cpu.pc, 0x8003);
 
     }
 
@@ -1226,7 +1201,7 @@ mod tests {
         cpu.set_flag(ZERO_FLAG);
         cpu.run();
 
-        assert_eq!(cpu.pc, 0x7FFF);
+        assert_eq!(cpu.pc, 0x8000);
 
         // Branch condition is NOT met
         let program = vec![0xF0, 0b1111_1101];
@@ -1234,7 +1209,7 @@ mod tests {
         cpu.clear_flag(ZERO_FLAG);
         cpu.run();
 
-        assert_eq!(cpu.pc, 0x8000);
+        assert_eq!(cpu.pc, 0x8003);
 
     }
 
@@ -1249,7 +1224,7 @@ mod tests {
         cpu.load(program);
         cpu.run();
 
-        assert_eq!(cpu.pc, 0x7FFF);
+        assert_eq!(cpu.pc, 0x8000);
 
         // Branch condition is NOT met
         let program = vec![0xD0, 0b1111_1101];
@@ -1257,7 +1232,7 @@ mod tests {
         cpu.set_flag(ZERO_FLAG);
         cpu.run();
 
-        assert_eq!(cpu.pc, 0x8000);
+        assert_eq!(cpu.pc, 0x8003);
 
     }
 
@@ -1273,7 +1248,7 @@ mod tests {
         cpu.set_flag(NEGATIVE_FLAG);
         cpu.run();
 
-        assert_eq!(cpu.pc, 0x7FFF);
+        assert_eq!(cpu.pc, 0x8000);
 
         // Branch condition is NOT met
         let program = vec![0x30, 0b1111_1101];
@@ -1281,7 +1256,7 @@ mod tests {
         cpu.clear_flag(NEGATIVE_FLAG);
         cpu.run();
 
-        assert_eq!(cpu.pc, 0x8000);
+        assert_eq!(cpu.pc, 0x8003);
 
     }
 
@@ -1296,10 +1271,11 @@ mod tests {
         cpu.load(program);
         cpu.run();
 
-        assert_eq!(cpu.pc, 0x7FFF);
+        assert_eq!(cpu.pc, 0x8000);
 
         // Branch condition is NOT met
         let program = vec![0x10, 0b1111_1101];
+        cpu.reset();
         cpu.load(program);
         cpu.set_flag(ZERO_FLAG);
         cpu.run();
@@ -1319,7 +1295,7 @@ mod tests {
         cpu.load(program);
         cpu.run();
 
-        assert_eq!(cpu.pc, 0x7FFF);
+        assert_eq!(cpu.pc, 0x8000);
 
         // Branch condition is NOT met
         let program = vec![0x50, 0b1111_1101];
@@ -1327,7 +1303,7 @@ mod tests {
         cpu.set_flag(OVERFLOW_FLAG);
         cpu.run();
 
-        assert_eq!(cpu.pc, 0x8000);
+        assert_eq!(cpu.pc, 0x8003);
 
     }
 
@@ -1343,7 +1319,7 @@ mod tests {
         cpu.set_flag(OVERFLOW_FLAG);
         cpu.run();
 
-        assert_eq!(cpu.pc, 0x7FFF);
+        assert_eq!(cpu.pc, 0x8000);
 
         // Branch condition is NOT met
         let program = vec![0x70, 0b1111_1101];
@@ -1351,7 +1327,7 @@ mod tests {
         cpu.clear_flag(OVERFLOW_FLAG);
         cpu.run();
 
-        assert_eq!(cpu.pc, 0x8000);
+        assert_eq!(cpu.pc, 0x8003);
 
     }
 
@@ -1374,7 +1350,7 @@ mod tests {
         let program = vec![0xA9, 0xF0, 0xC9, 0xF0, 0x00];
         cpu.load_and_run(program);
 
-        assert!(cpu.is_flag_set(NEGATIVE_FLAG));
+        assert!(!cpu.is_flag_set(NEGATIVE_FLAG));
         assert!(cpu.is_flag_set(ZERO_FLAG));
         assert!(cpu.is_flag_set(CARRY_FLAG));
 
@@ -1394,7 +1370,7 @@ mod tests {
         let program = vec![0xA2, 0xF0, 0xE0, 0xF0, 0x00];
         cpu.load_and_run(program);
 
-        assert!(cpu.is_flag_set(NEGATIVE_FLAG));
+        assert!(!cpu.is_flag_set(NEGATIVE_FLAG));
         assert!(cpu.is_flag_set(ZERO_FLAG));
         assert!(cpu.is_flag_set(CARRY_FLAG));
 
@@ -1415,7 +1391,7 @@ mod tests {
         let program = vec![0xA0, 0xF0, 0xC0, 0xF0, 0x00];
         cpu.load_and_run(program);
 
-        assert!(cpu.is_flag_set(NEGATIVE_FLAG));
+        assert!(!cpu.is_flag_set(NEGATIVE_FLAG));
         assert!(cpu.is_flag_set(ZERO_FLAG));
         assert!(cpu.is_flag_set(CARRY_FLAG));
 

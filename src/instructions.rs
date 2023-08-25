@@ -127,7 +127,7 @@ lazy_static! {
     Instruction::new(0xD6, "DEC", 2, 6, AddressingMode::ZeroPageX),
     Instruction::new(0xCE, "DEC", 3, 6, AddressingMode::Absolute),
     Instruction::new(0xDE, "DEC", 3, 7, AddressingMode::AbsoluteX),
-    
+
     Instruction::new(0xCA, "DEX", 1, 2, AddressingMode::Implied),
     Instruction::new(0x88, "DEY", 1, 2, AddressingMode::Implied),
 
@@ -213,13 +213,13 @@ lazy_static! {
     Instruction::new(0x60, "RTS", 1, 6, AddressingMode::Implied),
 
     Instruction::new(0xE9, "SBC", 2, 2, AddressingMode::Immediate),
-    Instruction::new(0xE5, "SBC", 2, 3, AddressingMode::Immediate),
-    Instruction::new(0xF5, "SBC", 2, 4, AddressingMode::Immediate),
-    Instruction::new(0xED, "SBC", 3, 4, AddressingMode::Immediate),
-    Instruction::new(0xFD, "SBC", 3, 4, AddressingMode::Immediate), // TODO: +1 cpu cycle if page is crossed
-    Instruction::new(0xF9, "SBC", 3, 4, AddressingMode::Immediate), // TODO: +1 cpu cycle if page is crossed
-    Instruction::new(0xE1, "SBC", 2, 6, AddressingMode::Immediate),
-    Instruction::new(0xF1, "SBC", 2, 5, AddressingMode::Immediate), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xE5, "SBC", 2, 3, AddressingMode::ZeroPage),
+    Instruction::new(0xF5, "SBC", 2, 4, AddressingMode::ZeroPageX),
+    Instruction::new(0xED, "SBC", 3, 4, AddressingMode::Absolute),
+    Instruction::new(0xFD, "SBC", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xF9, "SBC", 3, 4, AddressingMode::AbsoluteY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xE1, "SBC", 2, 6, AddressingMode::IndirectX),
+    Instruction::new(0xF1, "SBC", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
 
     Instruction::new(0x38, "SEC", 1, 2, AddressingMode::Implied),
     Instruction::new(0xF8, "SED", 1, 2, AddressingMode::Implied),

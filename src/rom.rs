@@ -1,3 +1,5 @@
+use log::{debug, warn, error};
+
 const HEADER_SIZE: usize = 16;
 const TRAINER_SIZE: usize = 512;
 const PRG_ROM_PAGE_SIZE: usize = 16384;
@@ -36,7 +38,7 @@ impl ROM {
   pub fn new(byte_code: &[u8]) -> ROM {
 
     let header = ROM::retrieve_and_verify_header(byte_code).unwrap_or_else(|msg| {
-      //TODO: Make a logging error + exit(1) statement once I figure out how I want logging
+      error!("{msg}");
       panic!("ERROR: {msg}");
     });
   
@@ -44,35 +46,29 @@ impl ROM {
     let chr_rom_size = header[5] as usize * CHR_ROM_PAGE_SIZE;
     let version = ROM::get_ines_version(header);
     
-    // TODO: Make a log statement (debug?)
-    println!("iNES Version: {:?}", version);
+    debug!("iNES Version: {:?}", version);
   
     if version != iNESVersion::iNES_1 {
       if version != iNESVersion::iNES_2 {
-        //TODO: Make a logging error + exit(1) statement once I figure out how I want logging
-        panic!("ERROR: Currently only iNES V1 is supported.");
+        let msg = "ROM must be either iNES_1 or iNES_2!";
+        error!("{msg}");
+        panic!("ERROR: {msg}");
       }
-
-      println!("WARNING: iNES V2 is not officially supported, but will work as V1 because of backwards compatibility");
-
+      warn!("WARNING: iNES V2 is not officially supported, but will work as V1 because of backwards compatibility");
     }
   
     let trainer_present = ROM::has_trainer(header);
 
-    //TODO: Logging debug?
-    println!("Trainer is present: {trainer_present}");
-  
-    //TODO: Logging debug?
-    println!("PRG ROM is {prg_rom_size} bytes");
-    println!("CHR ROM is {chr_rom_size} bytes");
+    debug!("Trainer is present: {trainer_present}");
+    debug!("PRG ROM is 0x{:0X} bytes", prg_rom_size);
+    debug!("CHR ROM is 0x{:0X} bytes", prg_rom_size);
   
     let prg_rom_offset = HEADER_SIZE + if trainer_present { TRAINER_SIZE } else { 0 };
     let chr_rom_offset = prg_rom_offset + prg_rom_size;
   
     let screen_mapping = ROM::get_screen_mirroring(header);
 
-    //TODO: Logging debug?
-    println!("Screen mapping: {:?}", screen_mapping);
+    debug!("Screen mapping: {:?}", screen_mapping);
   
     ROM {
       prg_rom: byte_code[prg_rom_offset..(prg_rom_offset+prg_rom_size)].to_vec(),
