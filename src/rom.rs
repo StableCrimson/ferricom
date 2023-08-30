@@ -29,7 +29,8 @@ pub enum ScreenMirroring {
 pub struct ROM {
   pub prg_rom: Vec<u8>,
   pub chr_rom: Vec<u8>,
-  pub mirroring: ScreenMirroring
+  pub mirroring: ScreenMirroring,
+  pub mapper: u8
 }
 
 impl ROM {
@@ -57,6 +58,9 @@ impl ROM {
       warn!("WARNING: iNES V2 is not officially supported, but will work as V1 because of backwards compatibility");
     }
   
+    let mapper = header[7] & 0b1111_0000 | header[6] >> 4;
+    debug!("Mapper 0x{:0X}", mapper);
+
     let trainer_present = ROM::has_trainer(header);
 
     debug!("Trainer is present: {trainer_present}");
@@ -66,14 +70,15 @@ impl ROM {
     let prg_rom_offset = HEADER_SIZE + if trainer_present { TRAINER_SIZE } else { 0 };
     let chr_rom_offset = prg_rom_offset + prg_rom_size;
   
-    let screen_mapping = ROM::get_screen_mirroring(header);
+    let mirroring = ROM::get_screen_mirroring(header);
 
-    debug!("Screen mapping: {:?}", screen_mapping);
+    debug!("Screen mapping: {:?}", mirroring);
   
     ROM {
       prg_rom: byte_code[prg_rom_offset..(prg_rom_offset+prg_rom_size)].to_vec(),
       chr_rom: byte_code[chr_rom_offset..(chr_rom_offset+chr_rom_size)].to_vec(),
-      mirroring: screen_mapping
+      mirroring,
+      mapper
     }
   
   }
