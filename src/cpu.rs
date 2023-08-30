@@ -272,8 +272,17 @@ impl CPU {
             AddressingMode::ZeroPageX => self.mem_read_u8(addr).wrapping_add(self.x) as u16,
             AddressingMode::ZeroPageY => self.mem_read_u8(addr).wrapping_add(self.y) as u16,
             AddressingMode::Indirect => {
+
                 let target_addr = self.mem_read_u16(addr);
-                self.mem_read_u16(target_addr)
+
+                if target_addr & 0xFF == 0xFF {
+                    let lsb = self.mem_read_u8(target_addr);
+                    let msb = self.mem_read_u8(target_addr & 0xFF00);
+                    (msb as u16) << 8 | lsb as u16
+                } else {
+                    self.mem_read_u16(target_addr)
+                }
+
             },
             AddressingMode::IndirectX => {
 
@@ -437,6 +446,8 @@ impl CPU {
         self.set_flag(BREAK_COMMAND_FLAG_5);
     }
 
+    /// 6502 has a bug when the indirect vector is on a page boundary
+    /// <https://www.nesdev.org/obelisk-6502-guide/reference.html#JMP>
     fn jump(&mut self, addressing_mode: &AddressingMode) {
         let target_addr = self.get_operand_address(addressing_mode);
         self.pc = target_addr;
@@ -517,7 +528,7 @@ impl CPU {
         data <<= 1;
 
         self.set_negative_and_zero_flags(data);
-        self.acc = data;
+        self.mem_write_u8(address, data);
 
     }
 
