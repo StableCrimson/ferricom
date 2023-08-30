@@ -11,7 +11,7 @@ If this project helps you write your own emulator or learn Rust, then even bette
 ## Roadmap (WIP)
 
 - [ ] CPU and all instructions
-- [ ] Memory into its own module
+- [x] Memory into its own module
 - [ ] ROM loading
 - [ ] PPU (Basic)
 - [ ] Input (Basic)
@@ -32,9 +32,10 @@ If this project helps you write your own emulator or learn Rust, then even bette
 - [x] Detecting if a page is crossed
 - [x] Branching instructions
 - [ ] Extra cycle on crossed page for certain instructions
-- [ ] Logging (Needed at this stage for test ROMs)
+- [x] Logging (Needed at this stage for test ROMs)
 - [ ] Cycle accuracy tests
 - [ ] Passes test ROMs (Instruction set)
+- [x] CLI arg parsing
 
 ### Misc To-Do
 
@@ -42,6 +43,7 @@ If this project helps you write your own emulator or learn Rust, then even bette
 - [ ] Disassembler
 - [ ] Actions also run linting and formatting (Once the emulator is actually usable)
 - [ ] Semver
+- [ ] Add usage docs
 
 ### Resources
 
