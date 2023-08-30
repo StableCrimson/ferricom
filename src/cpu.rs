@@ -21,7 +21,7 @@ const OVERFLOW_FLAG: u8 =           0b0100_0000;
 const NEGATIVE_FLAG: u8 =           0b1000_0000;
 
 /// For instructions that perform the same operation
-/// but on different registers (Ex: 'CMP`, `CPX`, `CPY`)
+/// but on different registers (Ex: `CMP`, `CPX`, `CPY`)
 /// Makes things more concise because we can have one general function
 /// that we just pass the registers into, instead of having a function
 /// for each unique instruction.
@@ -258,23 +258,26 @@ impl CPU {
     }
 
     fn get_operand_address(&self, addressing_mode: &AddressingMode) -> u16 {
+        self.get_absolute_address(addressing_mode, self.pc)
+    }
 
-        match *addressing_mode {
+    pub fn get_absolute_address(&self, addressing_mode: &AddressingMode, addr: u16) -> u16 {
+        match addressing_mode {
 
-            AddressingMode::Immediate => self.pc,
-            AddressingMode::Absolute => self.mem_read_u16(self.pc),
-            AddressingMode::AbsoluteX => self.mem_read_u16(self.pc).wrapping_add(self.x as u16),
-            AddressingMode::AbsoluteY => self.mem_read_u16(self.pc).wrapping_add(self.y as u16),
-            AddressingMode::ZeroPage => self.mem_read_u8(self.pc) as u16,
-            AddressingMode::ZeroPageX => self.mem_read_u8(self.pc).wrapping_add(self.x) as u16,
-            AddressingMode::ZeroPageY => self.mem_read_u8(self.pc).wrapping_add(self.y) as u16,
+            AddressingMode::Immediate => addr,
+            AddressingMode::Absolute => self.mem_read_u16(addr),
+            AddressingMode::AbsoluteX => self.mem_read_u16(addr).wrapping_add(self.x as u16),
+            AddressingMode::AbsoluteY => self.mem_read_u16(addr).wrapping_add(self.y as u16),
+            AddressingMode::ZeroPage => self.mem_read_u8(addr) as u16,
+            AddressingMode::ZeroPageX => self.mem_read_u8(addr).wrapping_add(self.x) as u16,
+            AddressingMode::ZeroPageY => self.mem_read_u8(addr).wrapping_add(self.y) as u16,
             AddressingMode::Indirect => {
-                let target_addr = self.mem_read_u16(self.pc);
+                let target_addr = self.mem_read_u16(addr);
                 self.mem_read_u16(target_addr)
             },
             AddressingMode::IndirectX => {
 
-                let initial_read_addr = self.mem_read_u8(self.pc);
+                let initial_read_addr = self.mem_read_u8(addr);
                 let offset_addr = initial_read_addr.wrapping_add(self.x);
 
                 let lsb = self.mem_read_u8(offset_addr as u16);
@@ -285,7 +288,7 @@ impl CPU {
             },
             AddressingMode::IndirectY => {
 
-                let initial_read_addr = self.mem_read_u8(self.pc);
+                let initial_read_addr = self.mem_read_u8(addr);
 
                 let lsb = self.mem_read_u8(initial_read_addr as u16);
                 let msb = self.mem_read_u8(initial_read_addr.wrapping_add(1) as u16);
@@ -295,58 +298,10 @@ impl CPU {
 
             },
             AddressingMode::Relative => {
-                let offset = self.mem_read_u8(self.pc) as i8;
-                self.pc.wrapping_add_signed(offset as i16).wrapping_add(1)
+                let offset = self.mem_read_u8(addr) as i8;
+                addr.wrapping_add_signed(offset as i16).wrapping_add(1)
             }
-            _ => panic!("Addressing mode {:?} instruction should not be reading an address", *addressing_mode)
-        }
-
-    }
-
-    pub fn get_absolute_address(&self, mode: &AddressingMode, addr: u16) -> u16 {
-        match mode {
-            AddressingMode::ZeroPage => self.mem_read_u8(addr) as u16,
-
-            AddressingMode::Absolute => self.mem_read_u16(addr),
-
-            AddressingMode::ZeroPageX => {
-                let pos = self.mem_read_u8(addr);
-                pos.wrapping_add(self.x) as u16
-            }
-            AddressingMode::ZeroPageY => {
-                let pos = self.mem_read_u8(addr);
-                pos.wrapping_add(self.y) as u16
-            }
-
-            AddressingMode::AbsoluteX => {
-                let base = self.mem_read_u16(addr);
-                base.wrapping_add(self.x as u16)
-            }
-            AddressingMode::AbsoluteY => {
-                let base = self.mem_read_u16(addr);
-                base.wrapping_add(self.y as u16)
-            }
-
-            AddressingMode::IndirectX => {
-                let base = self.mem_read_u8(addr);
-
-                let ptr = base.wrapping_add(self.x);
-                let lo = self.mem_read_u8(ptr as u16);
-                let hi = self.mem_read_u8(ptr.wrapping_add(1) as u16);
-                (hi as u16) << 8 | (lo as u16)
-            }
-            AddressingMode::IndirectY => {
-                let base = self.mem_read_u8(addr);
-
-                let lo = self.mem_read_u8(base as u16);
-                let hi = self.mem_read_u8(base.wrapping_add(1) as u16);
-                let deref_base = (hi as u16) << 8 | (lo as u16);
-                deref_base.wrapping_add(self.y as u16)
-            },
-
-            _ => {
-                panic!("mode {:?} is not supported", mode);
-            }
+            _ => panic!("Addressing mode {:?} instruction should not be reading an address", addressing_mode)
         }
     }
 

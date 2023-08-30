@@ -33,7 +33,7 @@ impl Instruction {
 //   pub opcode: u8,
 //   pub ins: &'static str,
 //   pub cycles: u8,
-//   pub operation: fn (&mut CPU),
+//   pub operation: fn (&self, &mut CPU),
 //   pub addressing_mode: AddressingMode
 // }
 
