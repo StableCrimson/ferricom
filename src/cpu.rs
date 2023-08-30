@@ -118,7 +118,7 @@ impl CPU {
             acc: 0,
             x: 0,
             y: 0,
-            status: 0,
+            status: 0x24, // Break flags
             bus
         }
     }
@@ -157,7 +157,7 @@ impl CPU {
     /// DEPRECATED?? Maybe only useful for testing??
     /// Loads a program into memory
     pub fn load(&mut self, program: Vec<u8>) {
-        self.load_custom_program(program, 0x8000);
+        self.load_custom_program(program, 0x0600);
     }
 
     /// Begins execution with no callback
@@ -734,14 +734,10 @@ mod tests {
 
     use std::vec;
     use crate::cpu::*;
-    use crate::rom::ROM;
+    use crate::rom::tests::test_rom;
 
     fn init_test_cpu() -> CPU {
-        let byte_code: Vec<u8> = vec![0x4E, 0x45, 0x53, 0x1A,
-                                    0x00, 0x00, 0x00, 0x00,
-                                    0x00, 0x00, 0x00, 0x00,
-                                    0x00, 0x00, 0x00, 0x00];
-        CPU::new(Bus::new(ROM::new(&byte_code)))
+        CPU::new(Bus::new(test_rom()))
     }
 
     #[test]
@@ -749,12 +745,12 @@ mod tests {
 
         let cpu = init_test_cpu();
 
-        assert_eq!(cpu.pc, 0x8000);
-        assert_eq!(cpu.sp, 0xFF);
+        assert_eq!(cpu.pc, 0x0000);
+        assert_eq!(cpu.sp, 0xFD);
         assert_eq!(cpu.acc, 0);
         assert_eq!(cpu.x, 0);
         assert_eq!(cpu.y, 0);
-        assert_eq!(cpu.status, 0);
+        assert_eq!(cpu.status, 0x24);
 
     }
 
@@ -762,7 +758,6 @@ mod tests {
     fn test_cpu_reset() {
 
         let mut cpu = init_test_cpu();
-        cpu.mem_write_u16(0xFFFC, 0x8000);
 
         cpu.acc = 52;
         cpu.sp = 124;
@@ -773,12 +768,12 @@ mod tests {
 
         cpu.reset();
 
-        assert_eq!(cpu.pc, 0x8000);
+        assert_eq!(cpu.pc, 0x0101);
         assert_eq!(cpu.sp, 0xFF);
         assert_eq!(cpu.acc, 0);
         assert_eq!(cpu.x, 0);
         assert_eq!(cpu.y, 0);
-        assert_eq!(cpu.status, 0);
+        assert_eq!(cpu.status, 0x00);
 
     }
 
@@ -796,7 +791,8 @@ mod tests {
 
         cpu.acc = 16;
         cpu.set_negative_and_zero_flags(cpu.acc);
-        assert_eq!(cpu.status, 0);
+        assert!(!cpu.is_flag_set(NEGATIVE_FLAG));
+        assert!(!cpu.is_flag_set(ZERO_FLAG));
 
     }
 
@@ -957,16 +953,17 @@ mod tests {
         cpu.sp = 0x13;
         cpu.pc = 0xF0;
 
-        cpu.mem_write_u16(0xF0, 0x8088);
-        cpu.mem_write_u16(0x8088, 0x1234);
-        cpu.mem_write_u16(0x88, 0x6789);
-        cpu.mem_write_u16(0x99, 0x5678);
+        cpu.mem_write_u16(0xF0, 0x80);
+        cpu.mem_write_u16(0x80, 0x1234);
+        cpu.mem_write_u16(0x91, 0x6789);
 
         // Indirect addressing
-        println!("Indirect X: {}", cpu.get_operand_address(&AddressingMode::IndirectX));
+        println!("Indirect: {:0x}", cpu.get_operand_address(&AddressingMode::Indirect));
+        println!("Indirect X: {:0x}", cpu.get_operand_address(&AddressingMode::IndirectX));
+        println!("Indirect Y: {:0x}", cpu.get_operand_address(&AddressingMode::IndirectY));
         assert_eq!(cpu.get_operand_address(&AddressingMode::Indirect), 0x1234);
-        assert_eq!(cpu.get_operand_address(&AddressingMode::IndirectX), 0x5678);
-        assert_eq!(cpu.get_operand_address(&AddressingMode::IndirectY), 0x679B);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::IndirectX), 0x6789);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::IndirectY), 0x1246);
 
     }
 
@@ -981,10 +978,6 @@ mod tests {
         cpu.pc = 0xF0;
 
         cpu.mem_write_u16(0xF0, 0x8001);
-        cpu.mem_write_u16(0x8088, 0x1234);
-        cpu.mem_write_u16(0x88, 0x6789);
-        cpu.mem_write_u16(0x99, 0x5678);
-
         assert_eq!(cpu.get_operand_address(&AddressingMode::Relative), 0xF2);
 
         cpu.mem_write_u8(0xF0, 0b1111_1100);

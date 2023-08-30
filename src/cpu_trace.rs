@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use log::error;
 
 use crate::cpu::{CPU, Mem, AddressingMode};
 use crate::instructions::{Instruction, CPU_INSTRUCTION_SET};
@@ -7,8 +8,15 @@ pub fn trace(cpu: &CPU) -> String {
         
   let opcodes: &HashMap<u8, &'static Instruction> = &CPU_INSTRUCTION_SET;
 
+  // TODO: Remove the match statement once all 256 opcodes are implemented
   let code = cpu.mem_read_u8(cpu.pc);
-  let opcode = opcodes.get(&code).unwrap();
+  let opcode = match opcodes.get(&code) {
+    Some(ins) => ins,
+    None => {
+        error!("Instruction 0x{:0X} is invalid or unimplemented", code);
+        panic!("Instruction 0x{:0X} is invalid or unimplemented", code);
+    }
+  };
 
   let begin = cpu.pc;
   let mut hex_dump = vec![];
@@ -136,69 +144,69 @@ pub fn trace(cpu: &CPU) -> String {
   .to_ascii_uppercase()
 }
 
-// #[cfg(test)]
-// mod test {
-//    use super::*;
-//    use crate::bus::Bus;
-//    use crate::cartridge::test::test_rom;
+#[cfg(test)]
+mod test {
+   use super::*;
+   use crate::bus::Bus;
+   use crate::rom::tests::test_rom;
 
-//    #[test]
-//    fn test_format_trace() {
-//        let mut bus = Bus::new(test_rom());
-//        bus.mem_write_u8(100, 0xa2);
-//        bus.mem_write_u8(101, 0x01);
-//        bus.mem_write_u8(102, 0xca);
-//        bus.mem_write_u8(103, 0x88);
-//        bus.mem_write_u8(104, 0x00);
+   #[test]
+   fn test_format_trace() {
+       let mut bus = Bus::new(test_rom());
+       bus.mem_write_u8(100, 0xa2);
+       bus.mem_write_u8(101, 0x01);
+       bus.mem_write_u8(102, 0xca);
+       bus.mem_write_u8(103, 0x88);
+       bus.mem_write_u8(104, 0x00);
 
-//        let mut cpu = CPU::new(bus);
-//        cpu.pc = 0x64;
-//        cpu.acc = 1;
-//        cpu.x = 2;
-//        cpu.y = 3;
-//        let mut result: Vec<String> = vec![];
-//        cpu.run_with_callback(|cpu| {
-//            result.push(trace(cpu));
-//        });
-//        assert_eq!(
-//            "0064  A2 01     LDX #$01                        A:01 X:02 Y:03 P:24 SP:FD",
-//            result[0]
-//        );
-//        assert_eq!(
-//            "0066  CA        DEX                             A:01 X:01 Y:03 P:24 SP:FD",
-//            result[1]
-//        );
-//        assert_eq!(
-//            "0067  88        DEY                             A:01 X:00 Y:03 P:26 SP:FD",
-//            result[2]
-//        );
-//    }
+       let mut cpu = CPU::new(bus);
+       cpu.pc = 0x64;
+       cpu.acc = 1;
+       cpu.x = 2;
+       cpu.y = 3;
+       let mut result: Vec<String> = vec![];
+       cpu.run_with_callback(|cpu| {
+           result.push(trace(cpu));
+       });
+       assert_eq!(
+           "0064  A2 01     LDX #$01                        A:01 X:02 Y:03 P:24 SP:FD",
+           result[0]
+       );
+       assert_eq!(
+           "0066  CA        DEX                             A:01 X:01 Y:03 P:24 SP:FD",
+           result[1]
+       );
+       assert_eq!(
+           "0067  88        DEY                             A:01 X:00 Y:03 P:26 SP:FD",
+           result[2]
+       );
+   }
 
-//    #[test]
-//    fn test_format_mem_access() {
-//        let mut bus = Bus::new(test_rom());
-//        // ORA ($33), Y
-//        bus.mem_write_u8(100, 0x11);
-//        bus.mem_write_u8(101, 0x33);
+   #[test]
+   fn test_format_mem_access() {
+       let mut bus = Bus::new(test_rom());
+       // ORA ($33), Y
+       bus.mem_write_u8(100, 0x11);
+       bus.mem_write_u8(101, 0x33);
 
 
-//        //data
-//        bus.mem_write_u8(0x33, 00);
-//        bus.mem_write_u8(0x34, 04);
+       //data
+       bus.mem_write_u8(0x33, 00);
+       bus.mem_write_u8(0x34, 04);
 
-//        //target cell
-//        bus.mem_write_u8(0x400, 0xAA);
+       //target cell
+       bus.mem_write_u8(0x400, 0xAA);
 
-//        let mut cpu = CPU::new(bus);
-//        cpu.pc = 0x64;
-//        cpu.y = 0;
-//        let mut result: Vec<String> = vec![];
-//        cpu.run_with_callback(|cpu| {
-//            result.push(trace(cpu));
-//        });
-//        assert_eq!(
-//            "0064  11 33     ORA ($33),Y = 0400 @ 0400 = AA  A:00 X:00 Y:00 P:24 SP:FD",
-//            result[0]
-//        );
-//    }
-// }
+       let mut cpu = CPU::new(bus);
+       cpu.pc = 0x64;
+       cpu.y = 0;
+       let mut result: Vec<String> = vec![];
+       cpu.run_with_callback(|cpu| {
+           result.push(trace(cpu));
+       });
+       assert_eq!(
+           "0064  11 33     ORA ($33),Y = 0400 @ 0400 = AA  A:00 X:00 Y:00 P:24 SP:FD",
+           result[0]
+       );
+   }
+}

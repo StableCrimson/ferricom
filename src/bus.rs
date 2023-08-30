@@ -1,6 +1,6 @@
 use crate::cpu::Mem;
 use crate::rom::ROM;
-use log::{debug, error};
+use log::{debug, warn, error};
 
 const RAM_START: u16 = 0;
 const RAM_MIRROR_END: u16 = 0x1FFF;
@@ -45,6 +45,7 @@ impl Mem for Bus {
         self.cpu_vram[mirred_addr as usize]
       },
       PPU_REGISTER_START..=PPU_REGISTER_MIRROR_END => {
+        warn!("PPU hasn't been implemented");
         todo!("PPU hasn't been implemented");
       },
       ROM_SPACE_START..=ROM_SPACE_END => {

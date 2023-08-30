@@ -6,14 +6,13 @@ pub mod cpu_trace;
 
 extern crate lazy_static;
 
-use cpu::CPU;
+use cpu::{CPU, Mem};
+use bus::Bus;
 use rom::ROM;
 use cpu_trace::trace;
 
 use std::fs;
-use log::{LevelFilter, info, warn, error};
-
-//CLI arguments and flags
+use log::{LevelFilter, info, warn, error, trace};
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -39,21 +38,15 @@ pub struct Arguments {
 #[cfg(not(tarpaulin_include))]
 fn main() {
 
-    use crate::{bus::Bus, cpu::Mem};
+    simple_logging::log_to_file("logs/log.log", LevelFilter::Debug).unwrap();
 
     let args = Arguments::parse();
 
     let file_path = &args.rom_file;
-    // let file_path = "roms/nestest.nes";
-    // info!("Target ROM: {}", file_path);
+    info!("Target ROM: {}", file_path);
 
     let cpu_tracing_enabled = args.cpu_tracelog;
     let nestest_ppu_disabled = args.disable_nestest_ppu_output;
-
-    // let cpu_tracing_enabled = true;
-    // let nestest_ppu_disabled = true;
-
-    let _ = simple_logging::log_to_file("logs/log.log", LevelFilter::Debug).unwrap();
 
     let byte_code = match fs::read(file_path) {
         Ok(byte_code) => byte_code,
@@ -82,13 +75,13 @@ fn main() {
       cpu.reset();
     }
 
-    let _ = simple_logging::log_to_file("logs/cpu_trace.log", LevelFilter::Info);
+    let _ = simple_logging::log_to_file("logs/cpu_trace.log", LevelFilter::Trace);
 
     cpu.run_with_callback(move |cpu| {
 
         if cpu_tracing_enabled {
           let trace_line = trace(cpu);
-          info!("{}", trace_line);
+          trace!("{}", trace_line);
           println!("{}", trace_line);
         }
 

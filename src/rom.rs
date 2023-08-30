@@ -138,9 +138,47 @@ impl ROM {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
 
   use super::*;
+
+  struct TestRom {
+    header: Vec<u8>,
+    trainer: Option<Vec<u8>>,
+    pgp_rom: Vec<u8>,
+    chr_rom: Vec<u8>,
+  }
+
+  fn create_rom(rom: TestRom) -> Vec<u8> {
+      let mut result = Vec::with_capacity(
+          rom.header.len()
+              + rom.trainer.as_ref().map_or(0, |t| t.len())
+              + rom.pgp_rom.len()
+              + rom.chr_rom.len(),
+      );
+
+      result.extend(&rom.header);
+      if let Some(t) = rom.trainer {
+          result.extend(t);
+      }
+      result.extend(&rom.pgp_rom);
+      result.extend(&rom.chr_rom);
+
+      result
+  }
+
+  pub fn test_rom() -> ROM {
+      let test_rom = create_rom(TestRom {
+          header: vec![
+              0x4E, 0x45, 0x53, 0x1A, 0x02, 0x01, 0x31, 00, 00, 00, 00, 00, 00, 00, 00, 00,
+          ],
+          trainer: None,
+          pgp_rom: vec![1; 2 * PRG_ROM_PAGE_SIZE],
+          chr_rom: vec![2; 1 * CHR_ROM_PAGE_SIZE],
+      });
+
+      ROM::new(&test_rom)
+  }
 
   #[test]
   fn test_retrieve_and_verify_header() {
