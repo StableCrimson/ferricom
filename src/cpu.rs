@@ -195,6 +195,7 @@ impl CPU {
                 0x04 | 0x44 | 0x64 | 0x0C | 0x14 | 0x34 | 0x54 | 0x74 | 0xD4 | 0xF4 => self.nop_read(&ins.addressing_mode),
                 0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => self.add_with_carry(&ins.addressing_mode),
                 0xE9 | 0xE5 | 0xF5 | 0xED | 0xFD | 0xF9 | 0xE1 | 0xF1 => self.subtract_with_carry(&ins.addressing_mode),
+                0xEB => self.subtract_with_carry(&ins.addressing_mode),
                 0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => self.and(&ins.addressing_mode),
                 0x24 | 0x2C => self.bit(&ins.addressing_mode),
                 0xC9 | 0xC5 | 0xD5 | 0xCD | 0xDD | 0xD9 | 0xC1 | 0xD1 => self.compare_register(&ins.addressing_mode, &RegisterID::ACC),
@@ -207,6 +208,7 @@ impl CPU {
                 0x86 | 0x96 | 0x8E => self.store_register(&ins.addressing_mode, &RegisterID::X),
                 0x84 | 0x94 | 0x8C => self.store_register(&ins.addressing_mode, &RegisterID::Y),
                 0xA3 | 0xA7 | 0xAF | 0xB3 | 0xB7 | 0xBF => self.load_registers(&ins.addressing_mode, &RegisterID::ACC, &RegisterID::X),
+                0x83 | 0x87 | 0x8F | 0x97 => self.store_registers(&ins.addressing_mode, &RegisterID::ACC, &RegisterID::X),
                 0xAA => self.transfer_register(&RegisterID::ACC, &RegisterID::X),
                 0xA8 => self.transfer_register(&RegisterID::ACC, &RegisterID::Y),
                 0xBA => self.transfer_register(&RegisterID::SP, &RegisterID::X),
@@ -226,6 +228,7 @@ impl CPU {
                 0xC8 => self.increment_register(&RegisterID::Y),
                 0xE6 | 0xF6 | 0xEE | 0xFE => self.increment_memory(&ins.addressing_mode),
                 0xC6 | 0xD6 | 0xCE | 0xDE => self.decrement_memory(&ins.addressing_mode),
+                0xC3 | 0xC7 | 0xCF | 0xD3 | 0xD7 | 0xDB | 0xDF => self.decrement_memory_unofficial(&ins.addressing_mode),
                 0x0A => self.acc_shift_left(),
                 0x4A => self.acc_shift_right(),
                 0x2A => self.rotate_acc_left(),
@@ -366,6 +369,19 @@ impl CPU {
 
         self.mem_write_u8(target_addr, data);
         self.set_negative_and_zero_flags(data);
+    }
+
+    /// Don't set negative and zero bits, and if the 
+    fn decrement_memory_unofficial(&mut self, addressing_mode: &AddressingMode) {
+
+        let target_addr = self.get_operand_address(addressing_mode);
+        let mut data = self.mem_read_u8(target_addr);
+        data = data.wrapping_sub(1);
+        self.mem_write_u8(target_addr, data);
+
+        self.conditional_flag_set(data <= self.acc, CARRY_FLAG);
+        self.set_negative_and_zero_flags(self.acc.wrapping_sub(data));
+
     }
 
     fn inclusive_or(&mut self, addressing_mode: &AddressingMode) {
@@ -677,6 +693,27 @@ impl CPU {
     fn load_registers(&mut self, addressing_mode: &AddressingMode, reg_a: &RegisterID, reg_b: &RegisterID) {
         self.load_register(addressing_mode, reg_a);
         self.load_register(addressing_mode, reg_b);
+    }
+
+    fn store_registers(&mut self, addressing_mode: &AddressingMode, reg_a: &RegisterID, reg_b: &RegisterID) {
+        
+        let reg_a_value = match reg_a {
+            RegisterID::ACC => self.acc,
+            RegisterID::X => self.x,
+            RegisterID::Y => self.y,
+            RegisterID::SP => panic!("Stack pointer should not be a target for storing")
+        };
+
+        let reg_b_value = match reg_b {
+            RegisterID::ACC => self.acc,
+            RegisterID::X => self.x,
+            RegisterID::Y => self.y,
+            RegisterID::SP => panic!("Stack pointer should not be a target for storing")
+        };
+
+        let target_addr = self.get_operand_address(addressing_mode);
+        self.mem_write_u8(target_addr, reg_a_value & reg_b_value);
+
     }
 
     fn transfer_register(&mut self, source_register: &RegisterID, target_register: &RegisterID) {
