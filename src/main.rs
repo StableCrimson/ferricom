@@ -1,4 +1,5 @@
 pub mod cpu;
+pub mod ppu;
 pub mod instructions;
 pub mod rom;
 pub mod bus;

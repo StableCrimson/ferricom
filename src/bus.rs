@@ -1,4 +1,4 @@
-use crate::cpu::Mem;
+use crate::{cpu::Mem, ppu::PPU};
 use crate::rom::ROM;
 use log::{debug, warn, error};
 
@@ -10,7 +10,8 @@ const ROM_SPACE_START: u16 = 0x8000;
 const ROM_SPACE_END: u16 = 0xFFFF;
 pub struct Bus {
   cpu_vram: [u8; 2048],
-  rom: ROM,
+  prg_rom: Vec<u8>,
+  ppu: PPU
 }
 
 impl Bus {
@@ -18,7 +19,8 @@ impl Bus {
   pub fn new(rom: ROM) -> Self {
     Bus {
       cpu_vram: [0; 2048],
-      rom
+      prg_rom: rom.prg_rom,
+      ppu: PPU::new(rom.chr_rom, rom.mirroring)
     }
   }
 
@@ -26,11 +28,11 @@ impl Bus {
 
     addr -= 0x8000;
 
-    if self.rom.prg_rom.len() == 0x4000 && addr >= 0x4000 {
+    if self.prg_rom.len() == 0x4000 && addr >= 0x4000 {
       addr %= 0x4000;
     }
 
-    self.rom.prg_rom[addr as usize]
+    self.prg_rom[addr as usize]
 
   }
 
