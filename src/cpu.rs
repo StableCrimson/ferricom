@@ -229,10 +229,12 @@ impl CPU {
                 0xE6 | 0xF6 | 0xEE | 0xFE => self.increment_memory(&ins.addressing_mode),
                 0xC6 | 0xD6 | 0xCE | 0xDE => self.decrement_memory(&ins.addressing_mode),
                 0xC3 | 0xC7 | 0xCF | 0xD3 | 0xD7 | 0xDB | 0xDF => self.decrement_memory_unofficial(&ins.addressing_mode),
+                0xE3 | 0xE7 | 0xEF | 0xF3 | 0xF7 | 0xFB | 0xFF  => self.increment_mem_and_subtract_from_acc(&ins.addressing_mode),
                 0x0A => self.acc_shift_left(),
                 0x4A => self.acc_shift_right(),
                 0x2A => self.rotate_acc_left(),
                 0x6A => self.rotate_acc_right(),
+                0x03 | 0x07 | 0x0F | 0x13 | 0x17 | 0x1B | 0x1F => self.arithmetic_shift_left_and_or_with_acc(&ins.addressing_mode),
                 0x06 | 0x16 | 0x0E | 0x1E => self.mem_shift_left(&ins.addressing_mode),
                 0x46 | 0x56 | 0x4E | 0x5E => self.mem_shift_right(&ins.addressing_mode),
                 0x26 | 0x36 | 0x2E | 0x3E => self.rotate_mem_left(&ins.addressing_mode),
@@ -382,6 +384,13 @@ impl CPU {
         self.conditional_flag_set(data <= self.acc, CARRY_FLAG);
         self.set_negative_and_zero_flags(self.acc.wrapping_sub(data));
 
+    }
+
+    fn increment_mem_and_subtract_from_acc(&mut self, addressing_mode: &AddressingMode) {
+        self.increment_memory(addressing_mode);
+        let target_addr = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(target_addr) as i8;
+        self.add_to_acc(data.wrapping_neg().wrapping_sub(1) as u8);
     }
 
     fn inclusive_or(&mut self, addressing_mode: &AddressingMode) {
@@ -630,6 +639,11 @@ impl CPU {
         self.set_negative_and_zero_flags(data);
         self.mem_write_u8(target_addr, data);
 
+    }
+
+    fn arithmetic_shift_left_and_or_with_acc(&mut self, addressing_mode: &AddressingMode) {
+        self.mem_shift_left(addressing_mode);
+        self.inclusive_or(addressing_mode)
     }
 
     fn set_flag(&mut self, flag_alias: u8) {

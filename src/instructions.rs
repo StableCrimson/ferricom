@@ -157,6 +157,14 @@ lazy_static! {
     Instruction::new(0xE8, "INX", 1, 2, AddressingMode::Implied),
     Instruction::new(0xC8, "INY", 1, 2, AddressingMode::Implied),
 
+    Instruction::new(0xE7, "*ISB", 2, 3, AddressingMode::ZeroPage), // ! Illegal
+    Instruction::new(0xF7, "*ISB", 2, 4, AddressingMode::ZeroPageX), // ! Illegal
+    Instruction::new(0xEF, "*ISB", 3, 4, AddressingMode::Absolute), // ! Illegal
+    Instruction::new(0xFF, "*ISB", 3, 4, AddressingMode::AbsoluteX), // ! Illegal
+    Instruction::new(0xFB, "*ISB", 3, 4, AddressingMode::AbsoluteY), // ! Illegal
+    Instruction::new(0xE3, "*ISB", 2, 6, AddressingMode::IndirectX), // ! Illegal
+    Instruction::new(0xF3, "*ISB", 2, 5, AddressingMode::IndirectY), // ! Illegal
+
     Instruction::new(0x4C, "JMP", 3, 3, AddressingMode::Absolute),
     Instruction::new(0x6C, "JMP", 3, 5, AddressingMode::Indirect),
 
@@ -274,6 +282,14 @@ lazy_static! {
     Instruction::new(0x38, "SEC", 1, 2, AddressingMode::Implied),
     Instruction::new(0xF8, "SED", 1, 2, AddressingMode::Implied),
     Instruction::new(0x78, "SEI", 1, 2, AddressingMode::Implied),
+
+    Instruction::new(0x07, "*SLO", 2, 3, AddressingMode::ZeroPage), // ! Illegal
+    Instruction::new(0x17, "*SLO", 2, 4, AddressingMode::ZeroPageX), // ! Illegal
+    Instruction::new(0x0F, "*SLO", 3, 4, AddressingMode::Absolute), // ! Illegal
+    Instruction::new(0x1F, "*SLO", 3, 4, AddressingMode::AbsoluteX), // ! Illegal
+    Instruction::new(0x1B, "*SLO", 3, 4, AddressingMode::AbsoluteY), // ! Illegal
+    Instruction::new(0x03, "*SLO", 2, 6, AddressingMode::IndirectX), // ! Illegal
+    Instruction::new(0x13, "*SLO", 2, 5, AddressingMode::IndirectY), // ! Illegal
 
     Instruction::new(0x85, "STA", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0x95, "STA", 2, 4, AddressingMode::ZeroPageX),
