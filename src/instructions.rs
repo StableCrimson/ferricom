@@ -153,6 +153,13 @@ lazy_static! {
 
     Instruction::new(0x20, "JSR", 3, 6, AddressingMode::Absolute),
 
+    Instruction::new(0xA3, "*LAX", 2, 6, AddressingMode::IndirectX), // ! Illegal
+    Instruction::new(0xA7, "*LAX", 2, 3, AddressingMode::ZeroPage), // ! Illegal
+    Instruction::new(0xB7, "*LAX", 2, 4, AddressingMode::ZeroPageY), // ! Illegal
+    Instruction::new(0xAF, "*LAX", 3, 4, AddressingMode::Absolute), // ! Illegal
+    Instruction::new(0xBF, "*LAX", 3, 5, AddressingMode::AbsoluteY), // ! Illegal
+    Instruction::new(0xB3, "*LAX", 2, 5, AddressingMode::IndirectY), // ! Illegal
+
     Instruction::new(0xA9, "LDA", 2, 2, AddressingMode::Immediate),
     Instruction::new(0xA5, "LDA", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0xB5, "LDA", 2, 4, AddressingMode::ZeroPageX),

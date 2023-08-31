@@ -206,6 +206,7 @@ impl CPU {
                 0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => self.store_register(&ins.addressing_mode, &RegisterID::ACC),
                 0x86 | 0x96 | 0x8E => self.store_register(&ins.addressing_mode, &RegisterID::X),
                 0x84 | 0x94 | 0x8C => self.store_register(&ins.addressing_mode, &RegisterID::Y),
+                0xA3 | 0xA7 | 0xAF | 0xB3 | 0xB7 | 0xBF => self.load_registers(&ins.addressing_mode, &RegisterID::ACC, &RegisterID::X),
                 0xAA => self.transfer_register(&RegisterID::ACC, &RegisterID::X),
                 0xA8 => self.transfer_register(&RegisterID::ACC, &RegisterID::Y),
                 0xBA => self.transfer_register(&RegisterID::SP, &RegisterID::X),
@@ -670,6 +671,12 @@ impl CPU {
         let address = self.get_operand_address(addressing_mode);
         self.mem_write_u8(address, register_value);
 
+    }
+
+    // TODO: Maybe do this manually? Removes the extra setting of the zero and negative flags
+    fn load_registers(&mut self, addressing_mode: &AddressingMode, reg_a: &RegisterID, reg_b: &RegisterID) {
+        self.load_register(addressing_mode, reg_a);
+        self.load_register(addressing_mode, reg_b);
     }
 
     fn transfer_register(&mut self, source_register: &RegisterID, target_register: &RegisterID) {
