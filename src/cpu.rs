@@ -173,7 +173,7 @@ impl CPU {
         let ins_set = &(*instructions::CPU_INSTRUCTION_SET);
 
         // TODO REMOVE LATER
-        // println!("IMPLEMENTED {} OF 256 INSTRUCTIONS", ins_set.len());
+        println!("IMPLEMENTED {} OF 256 INSTRUCTIONS", ins_set.len());
 
         loop {
 
@@ -189,6 +189,10 @@ impl CPU {
 
                 0x00 => return,
                 0xEA => (),
+                0x1A | 0x3A | 0x5A | 0x7A | 0xDA | 0xFA => (),
+                0x80 => (),
+                0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => self.nop_read(&ins.addressing_mode),
+                0x04 | 0x44 | 0x64 | 0x0C | 0x14 | 0x34 | 0x54 | 0x74 | 0xD4 | 0xF4 => self.nop_read(&ins.addressing_mode),
                 0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => self.add_with_carry(&ins.addressing_mode),
                 0xE9 | 0xE5 | 0xF5 | 0xED | 0xFD | 0xF9 | 0xE1 | 0xF1 => self.subtract_with_carry(&ins.addressing_mode),
                 0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => self.and(&ins.addressing_mode),
@@ -725,6 +729,11 @@ impl CPU {
         self.conditional_flag_set(data & NEGATIVE_FLAG == NEGATIVE_FLAG, NEGATIVE_FLAG);
         self.conditional_flag_set(result == 0, ZERO_FLAG);
 
+    }
+
+    fn nop_read(&self, addressing_mode: &AddressingMode) {
+        let addr = self.get_operand_address(addressing_mode);
+        self.mem_read_u8(addr);
     }
 
 }

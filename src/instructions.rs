@@ -181,6 +181,33 @@ lazy_static! {
     Instruction::new(0x5E, "LSR", 3, 7, AddressingMode::AbsoluteX),
 
     Instruction::new(0xEA, "NOP", 1, 2, AddressingMode::Implied),
+    
+    Instruction::new(0x1A, "*NOP", 1, 2, AddressingMode::Implied),
+    Instruction::new(0x3A, "*NOP", 1, 2, AddressingMode::Implied),
+    Instruction::new(0x5A, "*NOP", 1, 2, AddressingMode::Implied),
+    Instruction::new(0x7A, "*NOP", 1, 2, AddressingMode::Implied),
+    Instruction::new(0xDA, "*NOP", 1, 2, AddressingMode::Implied),
+    Instruction::new(0xFA, "*NOP", 1, 2, AddressingMode::Implied),
+
+    Instruction::new(0x04, "*NOP", 2, 3, AddressingMode::ZeroPage), // ! Illegal
+    Instruction::new(0x44, "*NOP", 2, 3, AddressingMode::ZeroPage), // ! Illegal
+    Instruction::new(0x64, "*NOP", 2, 3, AddressingMode::ZeroPage), // ! Illegal
+    Instruction::new(0x14, "*NOP", 2, 4, AddressingMode::ZeroPageX), // ! Illegal
+    Instruction::new(0x34, "*NOP", 2, 4, AddressingMode::ZeroPageX), // ! Illegal
+    Instruction::new(0x54, "*NOP", 2, 4, AddressingMode::ZeroPageX), // ! Illegal
+    Instruction::new(0x74, "*NOP", 2, 4, AddressingMode::ZeroPageX), // ! Illegal
+    Instruction::new(0xD4, "*NOP", 2, 4, AddressingMode::ZeroPageX), // ! Illegal
+    Instruction::new(0xF4, "*NOP", 2, 4, AddressingMode::ZeroPageX), // ! Illegal
+    
+    Instruction::new(0x0C, "*NOP", 3, 4, AddressingMode::Absolute), // ! Illegal
+    Instruction::new(0x1C, "*NOP", 3, 4, AddressingMode::AbsoluteX), // ! Illegal // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x3C, "*NOP", 3, 4, AddressingMode::AbsoluteX), // ! Illegal // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x5C, "*NOP", 3, 4, AddressingMode::AbsoluteX), // ! Illegal // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x7C, "*NOP", 3, 4, AddressingMode::AbsoluteX), // ! Illegal // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xDC, "*NOP", 3, 4, AddressingMode::AbsoluteX), // ! Illegal // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xFC, "*NOP", 3, 4, AddressingMode::AbsoluteX), // ! Illegal // TODO: +1 cpu cycle if page is crossed
+
+    Instruction::new(0x80, "*NOP", 2, 2, AddressingMode::Immediate), // ! Illegal
 
     Instruction::new(0x09, "ORA", 2, 2, AddressingMode::Immediate),
     Instruction::new(0x05, "ORA", 2, 3, AddressingMode::ZeroPage),
