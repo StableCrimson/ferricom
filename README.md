@@ -24,7 +24,7 @@ If this project helps you write your own emulator or learn Rust, then even bette
 
 ## CPU Status
 
-192/256 opcodes implemented
+227/256 opcodes implemented
 
 - [x] 151 Official opcodes
 - [ ] 105 Illegal opcodes

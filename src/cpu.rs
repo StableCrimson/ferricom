@@ -235,6 +235,9 @@ impl CPU {
                 0x2A => self.rotate_acc_left(),
                 0x6A => self.rotate_acc_right(),
                 0x03 | 0x07 | 0x0F | 0x13 | 0x17 | 0x1B | 0x1F => self.arithmetic_shift_left_and_or_with_acc(&ins.addressing_mode),
+                0x43 | 0x47 | 0x4F | 0x53 | 0x57 | 0x5B | 0x5F => self.logical_shift_right_and_xor_with_acc(&ins.addressing_mode),
+                0x23 | 0x27 | 0x2F | 0x33 | 0x37 | 0x3B | 0x3F => self.rotate_left_and_and_with_acc(&ins.addressing_mode),
+                0x63 | 0x67 | 0x6F | 0x73 | 0x77 | 0x7B | 0x7F => self.rotate_right_and_add_to_acc(&ins.addressing_mode),
                 0x06 | 0x16 | 0x0E | 0x1E => self.mem_shift_left(&ins.addressing_mode),
                 0x46 | 0x56 | 0x4E | 0x5E => self.mem_shift_right(&ins.addressing_mode),
                 0x26 | 0x36 | 0x2E | 0x3E => self.rotate_mem_left(&ins.addressing_mode),
@@ -644,6 +647,23 @@ impl CPU {
     fn arithmetic_shift_left_and_or_with_acc(&mut self, addressing_mode: &AddressingMode) {
         self.mem_shift_left(addressing_mode);
         self.inclusive_or(addressing_mode)
+    }
+
+    fn logical_shift_right_and_xor_with_acc(&mut self, addressing_mode: &AddressingMode) {
+        self.mem_shift_right(addressing_mode);
+        self.exclusive_or(addressing_mode);
+    }
+
+    fn rotate_left_and_and_with_acc(&mut self, addressing_mode: &AddressingMode) {
+        self.rotate_mem_left(addressing_mode);
+        self.and(addressing_mode)
+    }
+
+    fn rotate_right_and_add_to_acc(&mut self, addressing_mode: &AddressingMode) {
+        self.rotate_mem_right(addressing_mode);
+        let target_addr = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(target_addr);
+        self.add_to_acc(data);
     }
 
     fn set_flag(&mut self, flag_alias: u8) {
