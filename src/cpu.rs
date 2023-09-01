@@ -173,7 +173,7 @@ impl CPU {
         let ins_set = &(*instructions::CPU_INSTRUCTION_SET);
 
         // TODO REMOVE LATER
-        // println!("IMPLEMENTED {} OF 256 INSTRUCTIONS", ins_set.len());
+        println!("IMPLEMENTED {} OF 256 INSTRUCTIONS", ins_set.len());
 
         loop {
 
@@ -193,8 +193,13 @@ impl CPU {
                 0x80 => (),
                 0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => self.nop_read(&ins.addressing_mode),
                 0x04 | 0x44 | 0x64 | 0x0C | 0x14 | 0x34 | 0x54 | 0x74 | 0xD4 | 0xF4 => self.nop_read(&ins.addressing_mode),
+                0x1A | 0x3A | 0x5A | 0x7A | 0xDA | 0xFA => (),
+                0x80 => (),
+                0x1C | 0x3C | 0x5C | 0x7C | 0xDC | 0xFC => self.nop_read(&ins.addressing_mode),
+                0x04 | 0x44 | 0x64 | 0x0C | 0x14 | 0x34 | 0x54 | 0x74 | 0xD4 | 0xF4 => self.nop_read(&ins.addressing_mode),
                 0x69 | 0x65 | 0x75 | 0x6D | 0x7D | 0x79 | 0x61 | 0x71 => self.add_with_carry(&ins.addressing_mode),
                 0xE9 | 0xE5 | 0xF5 | 0xED | 0xFD | 0xF9 | 0xE1 | 0xF1 => self.subtract_with_carry(&ins.addressing_mode),
+                0xEB => self.subtract_with_carry(&ins.addressing_mode),
                 0xEB => self.subtract_with_carry(&ins.addressing_mode),
                 0x29 | 0x25 | 0x35 | 0x2D | 0x3D | 0x39 | 0x21 | 0x31 => self.and(&ins.addressing_mode),
                 0x24 | 0x2C => self.bit(&ins.addressing_mode),
@@ -207,6 +212,8 @@ impl CPU {
                 0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => self.store_register(&ins.addressing_mode, &RegisterID::ACC),
                 0x86 | 0x96 | 0x8E => self.store_register(&ins.addressing_mode, &RegisterID::X),
                 0x84 | 0x94 | 0x8C => self.store_register(&ins.addressing_mode, &RegisterID::Y),
+                0xA3 | 0xA7 | 0xAF | 0xB3 | 0xB7 | 0xBF => self.load_registers(&ins.addressing_mode, &RegisterID::ACC, &RegisterID::X),
+                0x83 | 0x87 | 0x8F | 0x97 => self.store_registers(&ins.addressing_mode, &RegisterID::ACC, &RegisterID::X),
                 0xA3 | 0xA7 | 0xAF | 0xB3 | 0xB7 | 0xBF => self.load_registers(&ins.addressing_mode, &RegisterID::ACC, &RegisterID::X),
                 0x83 | 0x87 | 0x8F | 0x97 => self.store_registers(&ins.addressing_mode, &RegisterID::ACC, &RegisterID::X),
                 0xAA => self.transfer_register(&RegisterID::ACC, &RegisterID::X),
@@ -230,10 +237,16 @@ impl CPU {
                 0xC6 | 0xD6 | 0xCE | 0xDE => self.decrement_memory(&ins.addressing_mode),
                 0xC3 | 0xC7 | 0xCF | 0xD3 | 0xD7 | 0xDB | 0xDF => self.decrement_memory_unofficial(&ins.addressing_mode),
                 0xE3 | 0xE7 | 0xEF | 0xF3 | 0xF7 | 0xFB | 0xFF  => self.increment_mem_and_subtract_from_acc(&ins.addressing_mode),
+                0xC3 | 0xC7 | 0xCF | 0xD3 | 0xD7 | 0xDB | 0xDF => self.decrement_memory_unofficial(&ins.addressing_mode),
+                0xE3 | 0xE7 | 0xEF | 0xF3 | 0xF7 | 0xFB | 0xFF  => self.increment_mem_and_subtract_from_acc(&ins.addressing_mode),
                 0x0A => self.acc_shift_left(),
                 0x4A => self.acc_shift_right(),
                 0x2A => self.rotate_acc_left(),
                 0x6A => self.rotate_acc_right(),
+                0x03 | 0x07 | 0x0F | 0x13 | 0x17 | 0x1B | 0x1F => self.arithmetic_shift_left_and_or_with_acc(&ins.addressing_mode),
+                0x43 | 0x47 | 0x4F | 0x53 | 0x57 | 0x5B | 0x5F => self.logical_shift_right_and_xor_with_acc(&ins.addressing_mode),
+                0x23 | 0x27 | 0x2F | 0x33 | 0x37 | 0x3B | 0x3F => self.rotate_left_and_and_with_acc(&ins.addressing_mode),
+                0x63 | 0x67 | 0x6F | 0x73 | 0x77 | 0x7B | 0x7F => self.rotate_right_and_add_to_acc(&ins.addressing_mode),
                 0x03 | 0x07 | 0x0F | 0x13 | 0x17 | 0x1B | 0x1F => self.arithmetic_shift_left_and_or_with_acc(&ins.addressing_mode),
                 0x43 | 0x47 | 0x4F | 0x53 | 0x57 | 0x5B | 0x5F => self.logical_shift_right_and_xor_with_acc(&ins.addressing_mode),
                 0x23 | 0x27 | 0x2F | 0x33 | 0x37 | 0x3B | 0x3F => self.rotate_left_and_and_with_acc(&ins.addressing_mode),
