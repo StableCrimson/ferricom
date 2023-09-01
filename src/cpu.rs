@@ -67,9 +67,9 @@ pub struct CPU {
 
 pub trait Mem {
 
-    fn mem_read_u8(&self, addr: u16) -> u8;
+    fn mem_read_u8(&mut self, addr: u16) -> u8;
 
-    fn mem_read_u16(&self, addr: u16) -> u16 {
+    fn mem_read_u16(&mut self, addr: u16) -> u16 {
         let lsb: u16 = self.mem_read_u8(addr) as u16;
         let msb = self.mem_read_u8(addr + 1) as u16;
         (msb << 8) | lsb
@@ -88,11 +88,11 @@ pub trait Mem {
 
 impl Mem for CPU {
 
-    fn mem_read_u8(&self, addr: u16) -> u8 {
+    fn mem_read_u8(&mut self, addr: u16) -> u8 {
         self.bus.mem_read_u8(addr)
     }
 
-    fn mem_read_u16(&self, addr: u16) -> u16 {
+    fn mem_read_u16(&mut self, addr: u16) -> u16 {
         self.bus.mem_read_u16(addr)
     }
 
@@ -270,11 +270,11 @@ impl CPU {
         }
     }
 
-    fn get_operand_address(&self, addressing_mode: &AddressingMode) -> u16 {
+    fn get_operand_address(&mut self, addressing_mode: &AddressingMode) -> u16 {
         self.get_absolute_address(addressing_mode, self.pc)
     }
 
-    pub fn get_absolute_address(&self, addressing_mode: &AddressingMode, addr: u16) -> u16 {
+    pub fn get_absolute_address(&mut self, addressing_mode: &AddressingMode, addr: u16) -> u16 {
         match addressing_mode {
 
             AddressingMode::Immediate => addr,
@@ -809,7 +809,7 @@ impl CPU {
 
     }
 
-    fn nop_read(&self, addressing_mode: &AddressingMode) {
+    fn nop_read(&mut self, addressing_mode: &AddressingMode) {
         let addr = self.get_operand_address(addressing_mode);
         self.mem_read_u8(addr);
     }
@@ -1075,7 +1075,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_get_operand_address_implied_panics() {
-        let cpu = init_test_cpu();
+        let mut cpu = init_test_cpu();
         cpu.get_operand_address(&AddressingMode::Implied);
     }
 

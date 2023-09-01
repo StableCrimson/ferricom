@@ -1,13 +1,34 @@
 use crate::{cpu::Mem, ppu::PPU};
 use crate::rom::ROM;
-use log::{debug, warn, error};
+use log::{debug, error};
 
-const RAM_START: u16 = 0;
-const RAM_MIRROR_END: u16 = 0x1FFF;
-const PPU_REGISTER_START: u16 = 0x2000;
-const PPU_REGISTER_MIRROR_END: u16 = 0x3FFF;
-const ROM_SPACE_START: u16 = 0x8000;
-const ROM_SPACE_END: u16 = 0xFFFF;
+const RAM_START: u16 =                0x0000;
+const RAM_MIRROR_END: u16 =           0x1FFF;
+const PPU_REGISTER_START: u16 =       0x2000;
+const PPU_REGISTER_MIRROR_END: u16 =  0x3FFF;
+const ROM_SPACE_START: u16 =          0x8000;
+const ROM_SPACE_END: u16 =            0xFFFF;
+
+/// Write-only registers
+const PPU_CONTROL_BYTE: u16 =         0x2000;
+const PPU_MASK_REGISTER: u16 =        0x2001;
+const PPU_SCROLL_BYTE: u16 =          0x2005;
+
+/// Read-only register for reporting PPU status
+const PPU_STATUS_REGISTER: u16 =      0x2002;
+
+/// Object Attribute Memory, keeps the state of sprites
+const PPU_OAM_ADDRESS_REGISTER: u16 = 0x2003;
+const PPU_OAM_DATA_REGISTER: u16 =    0x2004;
+
+/// For accessing PPU memory map
+const PPU_ADDRESS_REGISTER: u16 =     0x2006;
+const PPU_DATA_REGISTER: u16 =        0x2007;
+
+/// Direct-Memory Access, for quickly writing 256 bytes
+/// from RAM to OAM
+const PPU_DMA_ADDRESS: u16 =          0x4014;
+
 pub struct Bus {
   cpu_vram: [u8; 2048],
   prg_rom: Vec<u8>,
@@ -40,15 +61,20 @@ impl Bus {
 
 impl Mem for Bus {
 
-  fn mem_read_u8(&self, addr: u16) -> u8 {
+  fn mem_read_u8(&mut self, addr: u16) -> u8 {
     match addr {
       RAM_START..=RAM_MIRROR_END => {
         let mirred_addr = addr & 0b0000_0111_1111_1111;
         self.cpu_vram[mirred_addr as usize]
       },
-      PPU_REGISTER_START..=PPU_REGISTER_MIRROR_END => {
-        warn!("PPU hasn't been implemented");
-        todo!("PPU hasn't been implemented");
+      PPU_CONTROL_BYTE | PPU_MASK_REGISTER | PPU_OAM_ADDRESS_REGISTER | PPU_SCROLL_BYTE | PPU_ADDRESS_REGISTER | PPU_DMA_ADDRESS => {
+        error!("Attempted to read from write-only PPU address 0x{:0X}", addr);
+        panic!("Attempted to read from write-only PPU address 0x{:0X}", addr);
+      },
+      PPU_DATA_REGISTER => self.ppu.read_data(),
+      0x2008..=PPU_REGISTER_MIRROR_END => {
+        let mirrored_addr = addr & 0b0010_0000_0000_0111;
+        self.mem_read_u8(mirrored_addr)
       },
       ROM_SPACE_START..=ROM_SPACE_END => {
         self.read_prg_rom(addr)
@@ -66,9 +92,12 @@ impl Mem for Bus {
         let mirrored_addr = addr & 0b0000_0111_1111_1111;
         self.cpu_vram[mirrored_addr as usize] = data;
       },
-      PPU_REGISTER_START..=PPU_REGISTER_MIRROR_END => {
-        let _mirrored_addr = addr & 0b0010_0000_0000_0111;
-        todo!("PPU hasn't been implemented");
+      PPU_CONTROL_BYTE => self.ppu.update_ctrl_register(data),
+      PPU_ADDRESS_REGISTER => self.ppu.write_to_ppu_address(data),
+      PPU_DATA_REGISTER => self.ppu.write_to_data_register(data),
+      0x2008..=PPU_REGISTER_MIRROR_END => {
+        let mirrored_addr = addr & 0b0010_0000_0000_0111;
+        self.mem_write_u8(mirrored_addr, data);
       },
       ROM_SPACE_START..=ROM_SPACE_END => {
         let msg = "Attempted to write to ROM address space!";
@@ -78,6 +107,6 @@ impl Mem for Bus {
       _ => {
         debug!("Ignoring memory access at 0x{:0X}", addr);
       }
-    }    
+    }
   }
 }

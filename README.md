@@ -53,3 +53,4 @@ If this project helps you write your own emulator or learn Rust, then even bette
 - [6502 Addressing modes](https://www.nesdev.org/obelisk-6502-guide/addressing.html)
 - [6502 Stack](https://www.nesdev.org/wiki/Stack)
 - [iNES File Format Spec](https://www.nesdev.org/wiki/INES#Flags_6)
+- [NES Screen Mirroring](https://www.nesdev.org/wiki/Mirroring)

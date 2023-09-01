@@ -4,7 +4,7 @@ use log::error;
 use crate::cpu::{CPU, Mem, AddressingMode};
 use crate::instructions::{Instruction, CPU_INSTRUCTION_SET};
 
-pub fn trace(cpu: &CPU) -> String {
+pub fn trace(cpu: &mut CPU) -> String {
         
   let opcodes: &HashMap<u8, &'static Instruction> = &CPU_INSTRUCTION_SET;
 
