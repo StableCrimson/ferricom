@@ -32,7 +32,8 @@ const PPU_DMA_ADDRESS: u16 =          0x4014;
 pub struct Bus {
   cpu_vram: [u8; 2048],
   prg_rom: Vec<u8>,
-  ppu: PPU
+  ppu: PPU,
+  cycles: usize
 }
 
 impl Bus {
@@ -41,7 +42,8 @@ impl Bus {
     Bus {
       cpu_vram: [0; 2048],
       prg_rom: rom.prg_rom,
-      ppu: PPU::new(rom.chr_rom, rom.mirroring)
+      ppu: PPU::new(rom.chr_rom, rom.mirroring),
+      cycles: 7
     }
   }
 
@@ -55,6 +57,18 @@ impl Bus {
 
     self.prg_rom[addr as usize]
 
+  }
+
+  pub fn tick(&mut self) {
+    self.tick_cycles(1);
+  }
+
+  pub fn tick_cycles(&mut self, cycles: u8) {
+    self.cycles += cycles as usize;
+  }
+
+  pub fn get_cycles(&self) -> usize {
+    self.cycles
   }
 
 }

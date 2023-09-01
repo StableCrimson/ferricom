@@ -63,8 +63,6 @@ impl Instruction {
 lazy_static! {
 
   pub static ref CPU_INSTRUCTIONS: Vec<Instruction> = vec![
-    Instruction::new(0x00, "BRK", 1, 7, AddressingMode::Implied),
-
     Instruction::new(0x69, "ADC", 2, 2, AddressingMode::Immediate),
     Instruction::new(0x65, "ADC", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0x75, "ADC", 2, 4, AddressingMode::ZeroPageX),
@@ -101,6 +99,8 @@ lazy_static! {
     Instruction::new(0x24, "BIT", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0x2C, "BIT", 3, 4, AddressingMode::Absolute),
 
+    Instruction::new(0x00, "BRK", 1, 7, AddressingMode::Implied),
+
     Instruction::new(0x18, "CLC", 1, 2, AddressingMode::Implied),
     Instruction::new(0xD8, "CLD", 1, 2, AddressingMode::Implied),
     Instruction::new(0x58, "CLI", 1, 2, AddressingMode::Implied),
@@ -123,14 +123,13 @@ lazy_static! {
     Instruction::new(0xC4, "CPY", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0xCC, "CPY", 3, 4, AddressingMode::Absolute),
 
-    
-    Instruction::new(0xC7, "*DCP", 2, 3, AddressingMode::ZeroPage), // ! Illegal
-    Instruction::new(0xD7, "*DCP", 2, 4, AddressingMode::ZeroPageX), // ! Illegal
-    Instruction::new(0xCF, "*DCP", 3, 4, AddressingMode::Absolute), // ! Illegal
-    Instruction::new(0xDF, "*DCP", 3, 4, AddressingMode::AbsoluteX), // ! Illegal
-    Instruction::new(0xDB, "*DCP", 3, 4, AddressingMode::AbsoluteY), // ! Illegal
-    Instruction::new(0xC3, "*DCP", 2, 6, AddressingMode::IndirectX), // ! Illegal
-    Instruction::new(0xD3, "*DCP", 2, 5, AddressingMode::IndirectY), // ! Illegal
+    Instruction::new(0xC7, "*DCP", 2, 5, AddressingMode::ZeroPage), // ! Illegal
+    Instruction::new(0xD7, "*DCP", 2, 6, AddressingMode::ZeroPageX), // ! Illegal
+    Instruction::new(0xCF, "*DCP", 3, 6, AddressingMode::Absolute), // ! Illegal
+    Instruction::new(0xDF, "*DCP", 3, 7, AddressingMode::AbsoluteX), // ! Illegal
+    Instruction::new(0xDB, "*DCP", 3, 7, AddressingMode::AbsoluteY), // ! Illegal
+    Instruction::new(0xC3, "*DCP", 2, 8, AddressingMode::IndirectX), // ! Illegal
+    Instruction::new(0xD3, "*DCP", 2, 8, AddressingMode::IndirectY), // ! Illegal
 
     Instruction::new(0xC6, "DEC", 2, 5, AddressingMode::ZeroPage),
     Instruction::new(0xD6, "DEC", 2, 6, AddressingMode::ZeroPageX),
@@ -157,13 +156,13 @@ lazy_static! {
     Instruction::new(0xE8, "INX", 1, 2, AddressingMode::Implied),
     Instruction::new(0xC8, "INY", 1, 2, AddressingMode::Implied),
 
-    Instruction::new(0xE7, "*ISB", 2, 3, AddressingMode::ZeroPage), // ! Illegal
-    Instruction::new(0xF7, "*ISB", 2, 4, AddressingMode::ZeroPageX), // ! Illegal
-    Instruction::new(0xEF, "*ISB", 3, 4, AddressingMode::Absolute), // ! Illegal
-    Instruction::new(0xFF, "*ISB", 3, 4, AddressingMode::AbsoluteX), // ! Illegal
-    Instruction::new(0xFB, "*ISB", 3, 4, AddressingMode::AbsoluteY), // ! Illegal
-    Instruction::new(0xE3, "*ISB", 2, 6, AddressingMode::IndirectX), // ! Illegal
-    Instruction::new(0xF3, "*ISB", 2, 5, AddressingMode::IndirectY), // ! Illegal
+    Instruction::new(0xE7, "*ISB", 2, 5, AddressingMode::ZeroPage), // ! Illegal
+    Instruction::new(0xF7, "*ISB", 2, 6, AddressingMode::ZeroPageX), // ! Illegal
+    Instruction::new(0xEF, "*ISB", 3, 6, AddressingMode::Absolute), // ! Illegal
+    Instruction::new(0xFF, "*ISB", 3, 7, AddressingMode::AbsoluteX), // ! Illegal
+    Instruction::new(0xFB, "*ISB", 3, 7, AddressingMode::AbsoluteY), // ! Illegal
+    Instruction::new(0xE3, "*ISB", 2, 8, AddressingMode::IndirectX), // ! Illegal
+    Instruction::new(0xF3, "*ISB", 2, 8, AddressingMode::IndirectY), // ! Illegal
 
     Instruction::new(0x4C, "JMP", 3, 3, AddressingMode::Absolute),
     Instruction::new(0x6C, "JMP", 3, 5, AddressingMode::Indirect),
@@ -173,7 +172,7 @@ lazy_static! {
     Instruction::new(0xA7, "*LAX", 2, 3, AddressingMode::ZeroPage), // ! Illegal
     Instruction::new(0xB7, "*LAX", 2, 4, AddressingMode::ZeroPageY), // ! Illegal
     Instruction::new(0xAF, "*LAX", 3, 4, AddressingMode::Absolute), // ! Illegal
-    Instruction::new(0xBF, "*LAX", 3, 5, AddressingMode::AbsoluteY), // ! Illegal
+    Instruction::new(0xBF, "*LAX", 3, 4, AddressingMode::AbsoluteY), // ! Illegal
     Instruction::new(0xA3, "*LAX", 2, 6, AddressingMode::IndirectX), // ! Illegal
     Instruction::new(0xB3, "*LAX", 2, 5, AddressingMode::IndirectY), // ! Illegal
 
@@ -181,22 +180,22 @@ lazy_static! {
     Instruction::new(0xA5, "LDA", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0xB5, "LDA", 2, 4, AddressingMode::ZeroPageX),
     Instruction::new(0xAD, "LDA", 3, 4, AddressingMode::Absolute),
-    Instruction::new(0xBD, "LDA", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
-    Instruction::new(0xB9, "LDA", 3, 4, AddressingMode::AbsoluteY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xBD, "LDA", 3, 4, AddressingMode::AbsoluteX),
+    Instruction::new(0xB9, "LDA", 3, 4, AddressingMode::AbsoluteY),
     Instruction::new(0xA1, "LDA", 2, 6, AddressingMode::IndirectX),
-    Instruction::new(0xB1, "LDA", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xB1, "LDA", 2, 5, AddressingMode::IndirectY),
 
     Instruction::new(0xA2, "LDX", 2, 2, AddressingMode::Immediate),
     Instruction::new(0xA6, "LDX", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0xB6, "LDX", 2, 4, AddressingMode::ZeroPageY),
     Instruction::new(0xAE, "LDX", 3, 4, AddressingMode::Absolute),
-    Instruction::new(0xBE, "LDX", 3, 4, AddressingMode::AbsoluteY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xBE, "LDX", 3, 4, AddressingMode::AbsoluteY),
 
     Instruction::new(0xA0, "LDY", 2, 2, AddressingMode::Immediate),
     Instruction::new(0xA4, "LDY", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0xB4, "LDY", 2, 4, AddressingMode::ZeroPageX),
     Instruction::new(0xAC, "LDY", 3, 4, AddressingMode::Absolute),
-    Instruction::new(0xBC, "LDY", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xBC, "LDY", 3, 4, AddressingMode::AbsoluteX),
 
     Instruction::new(0x4A, "LSR", 1, 2, AddressingMode::None),
     Instruction::new(0x46, "LSR", 2, 5, AddressingMode::ZeroPage),
@@ -247,13 +246,13 @@ lazy_static! {
     Instruction::new(0x68, "PLA", 1, 4, AddressingMode::Implied),
     Instruction::new(0x28, "PLP", 1, 4, AddressingMode::Implied),
 
-    Instruction::new(0x27, "*RLA", 2, 3, AddressingMode::ZeroPage), // ! Illegal
-    Instruction::new(0x37, "*RLA", 2, 4, AddressingMode::ZeroPageX), // ! Illegal
-    Instruction::new(0x2F, "*RLA", 3, 4, AddressingMode::Absolute), // ! Illegal
-    Instruction::new(0x3F, "*RLA", 3, 4, AddressingMode::AbsoluteX), // ! Illegal
-    Instruction::new(0x3B, "*RLA", 3, 4, AddressingMode::AbsoluteY), // ! Illegal
-    Instruction::new(0x23, "*RLA", 2, 6, AddressingMode::IndirectX), // ! Illegal
-    Instruction::new(0x33, "*RLA", 2, 5, AddressingMode::IndirectY), // ! Illegal
+    Instruction::new(0x27, "*RLA", 2, 5, AddressingMode::ZeroPage), // ! Illegal
+    Instruction::new(0x37, "*RLA", 2, 6, AddressingMode::ZeroPageX), // ! Illegal
+    Instruction::new(0x2F, "*RLA", 3, 6, AddressingMode::Absolute), // ! Illegal
+    Instruction::new(0x3F, "*RLA", 3, 7, AddressingMode::AbsoluteX), // ! Illegal
+    Instruction::new(0x3B, "*RLA", 3, 7, AddressingMode::AbsoluteY), // ! Illegal
+    Instruction::new(0x23, "*RLA", 2, 8, AddressingMode::IndirectX), // ! Illegal
+    Instruction::new(0x33, "*RLA", 2, 8, AddressingMode::IndirectY), // ! Illegal
 
     Instruction::new(0x2A, "ROL", 1, 2, AddressingMode::None),
     Instruction::new(0x26, "ROL", 2, 5, AddressingMode::ZeroPage),
@@ -267,13 +266,13 @@ lazy_static! {
     Instruction::new(0x6E, "ROR", 3, 6, AddressingMode::Absolute),
     Instruction::new(0x7E, "ROR", 3, 7, AddressingMode::AbsoluteX),
 
-    Instruction::new(0x67, "*RRA", 2, 3, AddressingMode::ZeroPage), // ! Illegal
-    Instruction::new(0x77, "*RRA", 2, 3, AddressingMode::ZeroPageX), // ! Illegal
-    Instruction::new(0x6F, "*RRA", 3, 4, AddressingMode::Absolute), // ! Illegal
-    Instruction::new(0x7F, "*RRA", 3, 4, AddressingMode::AbsoluteX), // ! Illegal
-    Instruction::new(0x7B, "*RRA", 3, 4, AddressingMode::AbsoluteY), // ! Illegal
-    Instruction::new(0x63, "*RRA", 2, 6, AddressingMode::IndirectX), // ! Illegal
-    Instruction::new(0x73, "*RRA", 2, 5, AddressingMode::IndirectY), // ! Illegal
+    Instruction::new(0x67, "*RRA", 2, 5, AddressingMode::ZeroPage), // ! Illegal
+    Instruction::new(0x77, "*RRA", 2, 6, AddressingMode::ZeroPageX), // ! Illegal
+    Instruction::new(0x6F, "*RRA", 3, 6, AddressingMode::Absolute), // ! Illegal
+    Instruction::new(0x7F, "*RRA", 3, 7, AddressingMode::AbsoluteX), // ! Illegal
+    Instruction::new(0x7B, "*RRA", 3, 7, AddressingMode::AbsoluteY), // ! Illegal
+    Instruction::new(0x63, "*RRA", 2, 8, AddressingMode::IndirectX), // ! Illegal
+    Instruction::new(0x73, "*RRA", 2, 8, AddressingMode::IndirectY), // ! Illegal
 
     Instruction::new(0x40, "RTI", 1, 6, AddressingMode::Implied),
 
@@ -299,21 +298,21 @@ lazy_static! {
     Instruction::new(0xF8, "SED", 1, 2, AddressingMode::Implied),
     Instruction::new(0x78, "SEI", 1, 2, AddressingMode::Implied),
 
-    Instruction::new(0x07, "*SLO", 2, 3, AddressingMode::ZeroPage), // ! Illegal
-    Instruction::new(0x17, "*SLO", 2, 4, AddressingMode::ZeroPageX), // ! Illegal
-    Instruction::new(0x0F, "*SLO", 3, 4, AddressingMode::Absolute), // ! Illegal
-    Instruction::new(0x1F, "*SLO", 3, 4, AddressingMode::AbsoluteX), // ! Illegal
-    Instruction::new(0x1B, "*SLO", 3, 4, AddressingMode::AbsoluteY), // ! Illegal
-    Instruction::new(0x03, "*SLO", 2, 6, AddressingMode::IndirectX), // ! Illegal
-    Instruction::new(0x13, "*SLO", 2, 5, AddressingMode::IndirectY), // ! Illegal
+    Instruction::new(0x07, "*SLO", 2, 5, AddressingMode::ZeroPage), // ! Illegal
+    Instruction::new(0x17, "*SLO", 2, 6, AddressingMode::ZeroPageX), // ! Illegal
+    Instruction::new(0x0F, "*SLO", 3, 6, AddressingMode::Absolute), // ! Illegal
+    Instruction::new(0x1F, "*SLO", 3, 7, AddressingMode::AbsoluteX), // ! Illegal
+    Instruction::new(0x1B, "*SLO", 3, 7, AddressingMode::AbsoluteY), // ! Illegal
+    Instruction::new(0x03, "*SLO", 2, 8, AddressingMode::IndirectX), // ! Illegal
+    Instruction::new(0x13, "*SLO", 2, 8, AddressingMode::IndirectY), // ! Illegal
 
-    Instruction::new(0x47, "*SRE", 2, 3, AddressingMode::ZeroPage), // ! Illegal
-    Instruction::new(0x57, "*SRE", 2, 4, AddressingMode::ZeroPageX), // ! Illegal
-    Instruction::new(0x4F, "*SRE", 3, 4, AddressingMode::Absolute), // ! Illegal
-    Instruction::new(0x5F, "*SRE", 3, 4, AddressingMode::AbsoluteX), // ! Illegal
-    Instruction::new(0x5B, "*SRE", 3, 4, AddressingMode::AbsoluteY), // ! Illegal
-    Instruction::new(0x43, "*SRE", 2, 6, AddressingMode::IndirectX), // ! Illegal
-    Instruction::new(0x53, "*SRE", 2, 5, AddressingMode::IndirectY), // ! Illegal
+    Instruction::new(0x47, "*SRE", 2, 5, AddressingMode::ZeroPage), // ! Illegal
+    Instruction::new(0x57, "*SRE", 2, 6, AddressingMode::ZeroPageX), // ! Illegal
+    Instruction::new(0x4F, "*SRE", 3, 6, AddressingMode::Absolute), // ! Illegal
+    Instruction::new(0x5F, "*SRE", 3, 7, AddressingMode::AbsoluteX), // ! Illegal
+    Instruction::new(0x5B, "*SRE", 3, 7, AddressingMode::AbsoluteY), // ! Illegal
+    Instruction::new(0x43, "*SRE", 2, 8, AddressingMode::IndirectX), // ! Illegal
+    Instruction::new(0x53, "*SRE", 2, 8, AddressingMode::IndirectY), // ! Illegal
 
     Instruction::new(0x85, "STA", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0x95, "STA", 2, 4, AddressingMode::ZeroPageX),
