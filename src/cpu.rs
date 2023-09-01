@@ -207,7 +207,7 @@ impl CPU {
                 0x85 | 0x95 | 0x8D | 0x9D | 0x99 | 0x81 | 0x91 => self.store_register(&ins.addressing_mode, &RegisterID::ACC),
                 0x86 | 0x96 | 0x8E => self.store_register(&ins.addressing_mode, &RegisterID::X),
                 0x84 | 0x94 | 0x8C => self.store_register(&ins.addressing_mode, &RegisterID::Y),
-                0xA3 | 0xA7 | 0xAF | 0xB3 | 0xB7 | 0xBF => self.load_registers(&ins.addressing_mode, &RegisterID::ACC, &RegisterID::X),
+                0xA3 | 0xA7 | 0xAF | 0xB3 | 0xB7 | 0xBF => self.load_acc_and_x(&ins.addressing_mode),
                 0x83 | 0x87 | 0x8F | 0x97 => self.store_registers(&ins.addressing_mode, &RegisterID::ACC, &RegisterID::X),
                 0xAA => self.transfer_register(&RegisterID::ACC, &RegisterID::X),
                 0xA8 => self.transfer_register(&RegisterID::ACC, &RegisterID::Y),
@@ -333,7 +333,8 @@ impl CPU {
             },
             AddressingMode::Relative => {
                 let offset = self.mem_read_u8(addr) as i8;
-                (addr.wrapping_add_signed(offset as i16).wrapping_add(1), false)
+                let relative_addr = addr.wrapping_add_signed(offset as i16).wrapping_add(1);
+                (relative_addr, self.page_crossed(self.pc.wrapping_add(1), relative_addr))
             }
             _ => panic!("Addressing mode {:?} instruction should not be reading an address", addressing_mode)
         }
@@ -519,8 +520,10 @@ impl CPU {
     // ! Really wanted to do a guardian clause instead, but tarpaulin wasn't covering the early return
     fn branch_if(&mut self, condition: bool) {
         if condition {
+            let (jump_addr, page_crossed) = self.get_operand_address(&AddressingMode::Relative);
+            self.pc = jump_addr;
             self.bus.tick();
-            (self.pc, _) = self.get_operand_address(&AddressingMode::Relative);
+            self.tick_if_page_crossed(page_crossed);
         }
     }
 
@@ -747,10 +750,16 @@ impl CPU {
 
     }
 
-    // TODO: Maybe do this manually? Removes the extra setting of the zero and negative flags
-    fn load_registers(&mut self, addressing_mode: &AddressingMode, reg_a: &RegisterID, reg_b: &RegisterID) {
-        self.load_register(addressing_mode, reg_a);
-        self.load_register(addressing_mode, reg_b);
+    fn load_acc_and_x(&mut self, addressing_mode: &AddressingMode) {
+
+        let (target_addr, page_crossed) = self.get_operand_address(addressing_mode);
+        let data = self.mem_read_u8(target_addr);
+        self.acc = data;
+        self.x = data;
+
+        self.set_negative_and_zero_flags(data);
+        self.tick_if_page_crossed(page_crossed);
+        
     }
 
     fn store_registers(&mut self, addressing_mode: &AddressingMode, reg_a: &RegisterID, reg_b: &RegisterID) {
@@ -833,9 +842,10 @@ impl CPU {
 
     }
 
-    fn nop_read(&self, addressing_mode: &AddressingMode) {
-        let (addr, _) = self.get_operand_address(addressing_mode);
+    fn nop_read(&mut self, addressing_mode: &AddressingMode) {
+        let (addr, page_crossed) = self.get_operand_address(addressing_mode);
         self.mem_read_u8(addr);
+        self.tick_if_page_crossed(page_crossed);
     }
 
 }
