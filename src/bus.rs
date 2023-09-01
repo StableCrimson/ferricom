@@ -11,6 +11,7 @@ const ROM_SPACE_END: u16 = 0xFFFF;
 pub struct Bus {
   cpu_vram: [u8; 2048],
   rom: ROM,
+  cycles: usize
 }
 
 impl Bus {
@@ -18,7 +19,8 @@ impl Bus {
   pub fn new(rom: ROM) -> Self {
     Bus {
       cpu_vram: [0; 2048],
-      rom
+      rom,
+      cycles: 7
     }
   }
 
@@ -32,6 +34,18 @@ impl Bus {
 
     self.rom.prg_rom[addr as usize]
 
+  }
+
+  pub fn tick(&mut self) {
+    self.tick_cycles(1);
+  }
+
+  pub fn tick_cycles(&mut self, cycles: u8) {
+    self.cycles += cycles as usize;
+  }
+
+  pub fn get_cycles(&self) -> usize {
+    self.cycles
   }
 
 }

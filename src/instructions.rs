@@ -63,8 +63,6 @@ impl Instruction {
 lazy_static! {
 
   pub static ref CPU_INSTRUCTIONS: Vec<Instruction> = vec![
-    Instruction::new(0x00, "BRK", 1, 7, AddressingMode::Implied),
-
     Instruction::new(0x69, "ADC", 2, 2, AddressingMode::Immediate),
     Instruction::new(0x65, "ADC", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0x75, "ADC", 2, 4, AddressingMode::ZeroPageX),
@@ -101,6 +99,8 @@ lazy_static! {
     Instruction::new(0x24, "BIT", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0x2C, "BIT", 3, 4, AddressingMode::Absolute),
 
+    Instruction::new(0x00, "BRK", 1, 7, AddressingMode::Implied),
+
     Instruction::new(0x18, "CLC", 1, 2, AddressingMode::Implied),
     Instruction::new(0xD8, "CLD", 1, 2, AddressingMode::Implied),
     Instruction::new(0x58, "CLI", 1, 2, AddressingMode::Implied),
@@ -123,7 +123,6 @@ lazy_static! {
     Instruction::new(0xC4, "CPY", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0xCC, "CPY", 3, 4, AddressingMode::Absolute),
 
-    
     Instruction::new(0xC7, "*DCP", 2, 3, AddressingMode::ZeroPage), // ! Illegal
     Instruction::new(0xD7, "*DCP", 2, 4, AddressingMode::ZeroPageX), // ! Illegal
     Instruction::new(0xCF, "*DCP", 3, 4, AddressingMode::Absolute), // ! Illegal
@@ -181,22 +180,22 @@ lazy_static! {
     Instruction::new(0xA5, "LDA", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0xB5, "LDA", 2, 4, AddressingMode::ZeroPageX),
     Instruction::new(0xAD, "LDA", 3, 4, AddressingMode::Absolute),
-    Instruction::new(0xBD, "LDA", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
-    Instruction::new(0xB9, "LDA", 3, 4, AddressingMode::AbsoluteY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xBD, "LDA", 3, 4, AddressingMode::AbsoluteX),
+    Instruction::new(0xB9, "LDA", 3, 4, AddressingMode::AbsoluteY),
     Instruction::new(0xA1, "LDA", 2, 6, AddressingMode::IndirectX),
-    Instruction::new(0xB1, "LDA", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xB1, "LDA", 2, 5, AddressingMode::IndirectY),
 
     Instruction::new(0xA2, "LDX", 2, 2, AddressingMode::Immediate),
     Instruction::new(0xA6, "LDX", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0xB6, "LDX", 2, 4, AddressingMode::ZeroPageY),
     Instruction::new(0xAE, "LDX", 3, 4, AddressingMode::Absolute),
-    Instruction::new(0xBE, "LDX", 3, 4, AddressingMode::AbsoluteY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xBE, "LDX", 3, 4, AddressingMode::AbsoluteY),
 
     Instruction::new(0xA0, "LDY", 2, 2, AddressingMode::Immediate),
     Instruction::new(0xA4, "LDY", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0xB4, "LDY", 2, 4, AddressingMode::ZeroPageX),
     Instruction::new(0xAC, "LDY", 3, 4, AddressingMode::Absolute),
-    Instruction::new(0xBC, "LDY", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xBC, "LDY", 3, 4, AddressingMode::AbsoluteX),
 
     Instruction::new(0x4A, "LSR", 1, 2, AddressingMode::None),
     Instruction::new(0x46, "LSR", 2, 5, AddressingMode::ZeroPage),
