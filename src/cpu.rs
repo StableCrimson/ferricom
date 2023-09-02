@@ -272,11 +272,11 @@ impl CPU {
         }
     }
 
-    fn get_operand_address(&self, addressing_mode: &AddressingMode) -> (u16, bool) {
+    fn get_operand_address(&mut self, addressing_mode: &AddressingMode) -> (u16, bool) {
         self.get_absolute_address(addressing_mode, self.pc)
     }
 
-    pub fn get_absolute_address(&self, addressing_mode: &AddressingMode, addr: u16) -> (u16, bool) {
+    pub fn get_absolute_address(&mut self, addressing_mode: &AddressingMode, addr: u16) -> (u16, bool) {
         
         match addressing_mode {
 
@@ -1010,7 +1010,7 @@ mod tests {
         cpu.sp = 0x13;
         cpu.pc = 0xF0;
 
-        assert_eq!(cpu.get_operand_address(&AddressingMode::Immediate), 0xF0);
+        assert_eq!(cpu.get_operand_address(&AddressingMode::Immediate), (0xF0, false));
 
     }
 

@@ -65,6 +65,7 @@ impl Bus {
 
   pub fn tick_cycles(&mut self, cycles: u8) {
     self.cycles += cycles as usize;
+    self.ppu.tick(cycles * 3);
   }
 
   pub fn get_cycles(&self) -> usize {

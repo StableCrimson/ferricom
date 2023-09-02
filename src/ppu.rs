@@ -32,7 +32,10 @@ pub struct PPU {
   screen_mirroring: ScreenMirroring,
   addr: AddressRegister,
   control: u8,
-  internal_data_buffer: u8
+  status: u8,
+  internal_data_buffer: u8,
+  scanline: u8,
+  cycles: usize
 }
 
 impl AddressRegister {
@@ -99,8 +102,30 @@ impl PPU {
       screen_mirroring,
       addr: AddressRegister::new(),
       control: 0,
-      internal_data_buffer: 0
+      status: 0,
+      internal_data_buffer: 0,
+      scanline: 0,
+      cycles: 21
     }
+  }
+
+  pub fn tick(&mut self, cycles: u8) {
+
+    self.cycles += cycles as usize;
+
+    if self.cycles >= 341 {
+
+      self.cycles -= 341;
+      self.scanline += 1;
+
+      if self.scanline == 241 {
+        if self.control & GENERATE_NMI == GENERATE_NMI {
+          self.status;
+        }
+      }
+
+    }
+
   }
 
   pub fn write_to_ppu_address(&mut self, data: u8) {
