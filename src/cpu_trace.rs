@@ -138,8 +138,8 @@ pub fn trace(cpu: &CPU) -> String {
       .to_string();
 
   format!(
-      "{:47} A:{:02x} X:{:02x} Y:{:02x} P:{:02x} SP:{:02x} CYC:{}",
-      asm_str, cpu.acc, cpu.x, cpu.y, cpu.status, cpu.sp, cpu.bus.get_cycles()
+      "{:47} A:{:02x} X:{:02x} Y:{:02x} P:{:02x} SP:{:02x}",
+      asm_str, cpu.acc, cpu.x, cpu.y, cpu.status, cpu.sp
   )
   .to_ascii_uppercase()
 }
