@@ -1,4 +1,6 @@
 pub mod registers;
+pub mod pallete;
+pub mod frame;
 
 use log::{error, warn};
 
