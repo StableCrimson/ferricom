@@ -185,6 +185,10 @@ impl CPU {
 
             callback(self);
 
+            if let Some(_nmi) = self.bus.poll_nmi() {
+                self.non_maskable_interrupt();
+            }
+
             let opcode = self.mem_read_u8(self.pc);
             let ins = *ins_set.get(&opcode).unwrap_or_else(|| panic!("Instruction {} is invalid or unimplemented", opcode));
 
@@ -344,6 +348,19 @@ impl CPU {
             }
             _ => panic!("Addressing mode {:?} instruction should not be reading an address", addressing_mode)
         }
+    }
+
+    fn non_maskable_interrupt(&mut self) {
+
+        self.stack_push_u16(self.pc);
+        self.stack_push_status();
+
+        self.set_flag(CPUFlags::INTERRUPT_DISABLE);
+        let interrupt_handler_routine_addr = self.mem_read_u16(0xFFFA);
+        self.pc = interrupt_handler_routine_addr;
+
+        self.bus.tick_cycles(2);
+
     }
 
     fn increment_register(&mut self, target_register: &RegisterID) {

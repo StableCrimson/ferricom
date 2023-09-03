@@ -27,4 +27,8 @@ impl StatusRegister {
     self.remove(StatusRegister::VBLANK_STARTED);
   }
 
+  pub fn is_in_vblank(&self) -> bool {
+    self.contains(StatusRegister::VBLANK_STARTED)
+  }
+
 }

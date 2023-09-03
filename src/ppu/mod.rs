@@ -25,7 +25,8 @@ pub struct PPU {
   status: StatusRegister,
   internal_data_buffer: u8,
   scanline: u16,
-  cycles: usize
+  cycles: usize,
+  nmi: Option<u8>,
 }
 
 impl PPU {
@@ -42,7 +43,8 @@ impl PPU {
       status: StatusRegister::new(),
       internal_data_buffer: 0,
       scanline: 0,
-      cycles: 21
+      cycles: 21,
+      nmi: None,
     }
   }
 
@@ -58,13 +60,14 @@ impl PPU {
       if self.scanline == 241 {
         if self.control.should_generate_vblank_nmi() {
           self.status.set_vblank_status(true);
-          todo!("Should trigger a non-maskable interrupt");
+          self.nmi = Some(1);
         }
       }
 
       if self.scanline >= 262 {
         self.scanline = 0;
         self.status.reset_vblank_status();
+        self.nmi = None;
         return true;
       }
 
@@ -79,11 +82,22 @@ impl PPU {
   }
 
   pub fn update_ctrl_register(&mut self, data: u8) {
+
+    let before_nmi = self.control.should_generate_vblank_nmi();
     self.control.update(data);
+
+    if !before_nmi && self.control.should_generate_vblank_nmi() && self.status.is_in_vblank() {
+      self.nmi = Some(1);
+    }
+
   }
 
   fn increment_vram_addr(&mut self) {
     self.addr.increment(self.control.get_vram_addr_increment());
+  }
+
+  pub fn poll_nmi(&mut self) -> Option<u8> {
+    self.nmi.take()
   }
 
   pub fn read_data(&mut self) -> u8 {
