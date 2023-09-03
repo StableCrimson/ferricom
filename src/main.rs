@@ -5,6 +5,7 @@ pub mod bus;
 pub mod cpu_trace;
 
 extern crate lazy_static;
+extern crate bitflags;
 
 use cpu::{CPU, Mem};
 use bus::Bus;
@@ -37,6 +38,8 @@ pub struct Arguments {
 
 #[cfg(not(tarpaulin_include))]
 fn main() {
+    use crate::cpu::CPUFlags;
+
 
     simple_logging::log_to_file("logs/log.log", LevelFilter::Debug).unwrap();
 
@@ -70,7 +73,7 @@ fn main() {
     if nestest_ppu_disabled {
       warn!("Setting program counter to 0xC000. This is a feature for testing only, and is not intended for use when loading actual games.");
       cpu.pc = 0xC000;
-      cpu.status = 0x24;
+      cpu.status = CPUFlags::from_bits_truncate(0x24);
     } else {
       cpu.reset();
     }
