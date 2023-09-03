@@ -4,7 +4,7 @@ use log::error;
 use crate::cpu::{CPU, Mem, AddressingMode};
 use crate::instructions::{Instruction, CPU_INSTRUCTION_SET};
 
-pub fn trace(cpu: &CPU) -> String {
+pub fn trace(cpu: &mut CPU) -> String {
         
   let opcodes: &HashMap<u8, &'static Instruction> = &CPU_INSTRUCTION_SET;
 
@@ -138,8 +138,8 @@ pub fn trace(cpu: &CPU) -> String {
       .to_string();
 
   format!(
-      "{:47} A:{:02x} X:{:02x} Y:{:02x} P:{:02x} SP:{:02x} CYC:{}",
-      asm_str, cpu.acc, cpu.x, cpu.y, cpu.status, cpu.sp, cpu.bus.get_cycles()
+      "{:47} A:{:02x} X:{:02x} Y:{:02x} P:{:02x} SP:{:02x} PPU:{:3},{:3} CYC:{}",
+      asm_str, cpu.acc, cpu.x, cpu.y, cpu.status, cpu.sp, cpu.bus.ppu.scanline, cpu.bus.ppu.cycles, cpu.bus.get_cycles()
   )
   .to_ascii_uppercase()
 }
@@ -152,7 +152,7 @@ mod test {
 
    #[test]
    fn test_format_trace() {
-       let mut bus = Bus::new(test_rom());
+       let mut bus = Bus::new(test_rom(), |_| {});
        bus.mem_write_u8(100, 0xa2);
        bus.mem_write_u8(101, 0x01);
        bus.mem_write_u8(102, 0xca);
@@ -184,7 +184,7 @@ mod test {
 
    #[test]
    fn test_format_mem_access() {
-       let mut bus = Bus::new(test_rom());
+       let mut bus = Bus::new(test_rom(), |_| {});
        // ORA ($33), Y
        bus.mem_write_u8(100, 0x11);
        bus.mem_write_u8(101, 0x33);

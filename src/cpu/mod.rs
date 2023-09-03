@@ -1,30 +1,13 @@
+pub mod cpu_trace;
+pub mod cpu_status_flags;
+pub mod interrupt;
+
 use crate::instructions::{self};
+use crate::cpu::cpu_status_flags::CPUFlags;
+use crate::cpu::interrupt::Interrupt;
 use crate::bus::Bus;
 
-use bitflags::bitflags;
-
-bitflags! {
-
-    /// Aliases for the flags in the 6502 status register.
-    /// More information on these flags can be found here: <https://www.nesdev.org/wiki/Status_flags>
-    #[derive(Clone, Copy, Debug)]
-    pub struct CPUFlags: u8 {
-        const CARRY =              0b0000_0001;
-        const ZERO =               0b0000_0010;
-        const INTERRUPT_DISABLE =  0b0000_0100;
-        const DECIMAL_MODE =       0b0000_1000;
-
-        /*
-            Bits 4 and 5 are somewhat unused.
-            They are used to represent any of 4 interrupt status types
-        */
-        const BREAK_COMMAND_4 =    0b0001_0000;
-        const BREAK_COMMAND_5 =    0b0010_0000;
-
-        const OVERFLOW =           0b0100_0000;
-        const NEGATIVE =           0b1000_0000;
-    }
-}
+use self::interrupt::NMI;
 
 /// For instructions that perform the same operation
 /// but on different registers (Ex: `CMP`, `CPX`, `CPY`)
@@ -59,7 +42,7 @@ pub enum AddressingMode {
     None
 }
 
-pub struct CPU {
+pub struct CPU<'a> {
 
     pub pc: u16,
     pub sp: u8,
@@ -67,15 +50,15 @@ pub struct CPU {
     pub x: u8,
     pub y: u8,
     pub status: CPUFlags,
-    pub bus: Bus,
+    pub bus: Bus<'a>,
 
 }
 
 pub trait Mem {
 
-    fn mem_read_u8(&self, addr: u16) -> u8;
+    fn mem_read_u8(&mut self, addr: u16) -> u8;
 
-    fn mem_read_u16(&self, addr: u16) -> u16 {
+    fn mem_read_u16(&mut self, addr: u16) -> u16 {
         let lsb: u16 = self.mem_read_u8(addr) as u16;
         let msb = self.mem_read_u8(addr + 1) as u16;
         (msb << 8) | lsb
@@ -92,13 +75,13 @@ pub trait Mem {
 
 }
 
-impl Mem for CPU {
+impl Mem for CPU<'_> {
 
-    fn mem_read_u8(&self, addr: u16) -> u8 {
+    fn mem_read_u8(&mut self, addr: u16) -> u8 {
         self.bus.mem_read_u8(addr)
     }
 
-    fn mem_read_u16(&self, addr: u16) -> u16 {
+    fn mem_read_u16(&mut self, addr: u16) -> u16 {
         self.bus.mem_read_u16(addr)
     }
 
@@ -112,12 +95,12 @@ impl Mem for CPU {
 
 }
 
-impl CPU {
+impl<'a> CPU<'a> {
 
     /// Create a new 6502 CPU in its default state,
     /// able to provide a custom `Bus` if you want to
     /// for some reason
-    pub fn new(bus: Bus) -> Self {
+    pub fn new<'b>(bus: Bus<'b>) -> CPU<'b> {
         CPU {
             pc: 0x0000,
             sp: 0xFD,
@@ -182,6 +165,10 @@ impl CPU {
         // println!("IMPLEMENTED {} OF 256 INSTRUCTIONS", ins_set.len());
 
         loop {
+
+            if let Some(_nmi) = self.bus.poll_nmi() {
+                self.interrupt(NMI);
+            }
 
             callback(self);
 
@@ -278,11 +265,11 @@ impl CPU {
         }
     }
 
-    fn get_operand_address(&self, addressing_mode: &AddressingMode) -> (u16, bool) {
+    fn get_operand_address(&mut self, addressing_mode: &AddressingMode) -> (u16, bool) {
         self.get_absolute_address(addressing_mode, self.pc)
     }
 
-    pub fn get_absolute_address(&self, addressing_mode: &AddressingMode, addr: u16) -> (u16, bool) {
+    pub fn get_absolute_address(&mut self, addressing_mode: &AddressingMode, addr: u16) -> (u16, bool) {
         
         match addressing_mode {
 
@@ -344,6 +331,22 @@ impl CPU {
             }
             _ => panic!("Addressing mode {:?} instruction should not be reading an address", addressing_mode)
         }
+    }
+
+    fn interrupt(&mut self, interrupt: Interrupt) {
+
+        self.stack_push_u16(self.pc);
+
+        let mut status = self.status.clone();
+        status.set(CPUFlags::BREAK_COMMAND_4, interrupt.interrupt_flag_mask & CPUFlags::BREAK_COMMAND_4.bits() != 0);
+        status.set(CPUFlags::BREAK_COMMAND_5, interrupt.interrupt_flag_mask & CPUFlags::BREAK_COMMAND_5.bits() != 0);
+        self.stack_push_u8(status.bits());
+
+        self.set_flag(CPUFlags::INTERRUPT_DISABLE);
+        let interrupt_handler_routine_addr = self.mem_read_u16(interrupt.vector_address);
+        self.bus.tick_cycles(interrupt.cycles);
+        self.pc = interrupt_handler_routine_addr;
+
     }
 
     fn increment_register(&mut self, target_register: &RegisterID) {
@@ -488,8 +491,8 @@ impl CPU {
     /// <http://wiki.nesdev.com/w/index.php/CPU_status_flag_behavior>
     fn stack_pop_status(&mut self) {
         self.status = CPUFlags::from_bits_truncate(self.stack_pop_u8());
-        self.clear_flag(CPUFlags::BREAK_COMMAND_4);
-        self.set_flag(CPUFlags::BREAK_COMMAND_5);
+        self.status.remove(CPUFlags::BREAK_COMMAND_4);
+        self.status.insert(CPUFlags::BREAK_COMMAND_5);
     }
 
     fn return_from_interrupt(&mut self) {
@@ -699,11 +702,7 @@ impl CPU {
     /// If `condition` is true, the specified flag is set.
     /// If `condition` is false, the specified flag is cleared.
     fn conditional_flag_set(&mut self, condition: bool, flag_alias: CPUFlags) {
-        if condition {
-            self.status.insert(flag_alias);
-        } else {
-            self.status.remove(flag_alias);
-        }
+        self.status.set(flag_alias, condition);
     }
 
     fn is_flag_set(&self, flag_alias: CPUFlags) -> bool {
@@ -864,8 +863,8 @@ mod tests {
     use crate::cpu::*;
     use crate::rom::tests::test_rom;
 
-    fn init_test_cpu() -> CPU {
-        CPU::new(Bus::new(test_rom()))
+    fn init_test_cpu<'a>() -> CPU<'a> {
+        CPU::new(Bus::new(test_rom(), |_| {}))
     }
 
     #[test]
@@ -1134,7 +1133,7 @@ mod tests {
     #[test]
     #[should_panic]
     fn test_get_operand_address_implied_panics() {
-        let cpu = init_test_cpu();
+        let mut cpu = init_test_cpu();
         cpu.get_operand_address(&AddressingMode::Implied);
     }
 
