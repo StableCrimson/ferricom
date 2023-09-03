@@ -12,8 +12,8 @@ If this project helps you write your own emulator or learn Rust, then even bette
 
 - [ ] CPU and all instructions
 - [x] Memory into its own module
-- [ ] ROM loading
-- [ ] PPU (Basic)
+- [x] ROM loading
+- [x] PPU (Basic)
 - [ ] Input (Basic)
 - [ ] APU
 - [ ] PPU (Advanced)
