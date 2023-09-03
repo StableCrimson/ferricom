@@ -1,6 +1,7 @@
 pub mod registers;
-pub mod pallete;
+pub mod palette;
 pub mod frame;
+pub mod render;
 
 use log::{error, warn};
 
@@ -17,17 +18,18 @@ const PALETTE_TABLE_BEGIN: u16 =  0x3F00;
 const PALETTE_TABLE_END: u16 =    0x3FFF;
 
 pub struct PPU {
-  chr_rom: Vec<u8>,
+  pub chr_rom: Vec<u8>,
   palette_table: [u8; 32],
+  oam_addr: u8,
   oam_data: [u8; 256],
-  vram: [u8; 2048],
+  pub vram: [u8; 2048],
   screen_mirroring: ScreenMirroring,
   addr: AddressRegister,
   control: ControlRegister,
   status: StatusRegister,
   internal_data_buffer: u8,
-  scanline: u16,
-  cycles: usize,
+  pub scanline: u16,
+  pub cycles: usize,
   nmi: Option<u8>,
 }
 
@@ -37,6 +39,7 @@ impl PPU {
     PPU {
       chr_rom,
       palette_table: [0; 32],
+      oam_addr: 0,
       oam_data: [0; 256],
       vram: [0; 2048],
       screen_mirroring,
@@ -45,7 +48,7 @@ impl PPU {
       status: StatusRegister::new(),
       internal_data_buffer: 0,
       scanline: 0,
-      cycles: 21,
+      cycles: 0,
       nmi: None,
     }
   }
@@ -60,8 +63,8 @@ impl PPU {
       self.scanline += 1;
 
       if self.scanline == 241 {
+        self.status.set_vblank_status(true);
         if self.control.should_generate_vblank_nmi() {
-          self.status.set_vblank_status(true);
           self.nmi = Some(1);
         }
       }
@@ -72,16 +75,21 @@ impl PPU {
         self.nmi = None;
         return true;
       }
-
     }
-
-    false
-
+    return false;
   }
 
   pub fn write_to_ppu_address(&mut self, data: u8) {
     self.addr.update(data);
   }
+
+  pub fn read_status(&mut self) -> u8 {
+    let data = self.status.bits();
+    self.status.reset_vblank_status();
+    self.addr.reset_latch();
+    data
+  }
+
 
   pub fn update_ctrl_register(&mut self, data: u8) {
 
@@ -125,6 +133,19 @@ impl PPU {
 
   }
 
+  pub fn read_oam_data(&self) -> u8 {
+    self.oam_data[self.oam_addr as usize]
+  }
+
+  pub fn write_oam_data(&mut self, data: u8) {
+    self.oam_data[self.oam_addr as usize] = data;
+    self.oam_addr = self.oam_addr.wrapping_add(1);
+  }
+
+  pub fn write_oam_addr(&mut self, addr: u8) {
+    self.oam_addr = addr;
+  }
+
   pub fn write_to_data_register(&mut self, data: u8) {
     
     let target_addr = self.addr.get();
@@ -149,6 +170,8 @@ impl PPU {
       }
     }
 
+    self.increment_vram_addr();
+
   }
 
   pub fn mirror_vram_addr(&self, addr: u16) -> u16 {
@@ -166,4 +189,208 @@ impl PPU {
       _ => vram_index
     }
   }
+}
+
+#[cfg(test)]
+pub mod test {
+    use super::*;
+
+    pub fn new_empty_rom() -> PPU {
+      PPU::new(vec![0; 2048], ScreenMirroring::Horizontal)
+  }
+
+    #[test]
+    fn test_ppu_vram_writes() {
+        let mut ppu = new_empty_rom();
+        ppu.write_to_ppu_address(0x23);
+        ppu.write_to_ppu_address(0x05);
+        ppu.write_to_data_register(0x66);
+
+        assert_eq!(ppu.vram[0x0305], 0x66);
+    }
+
+    #[test]
+    fn test_ppu_vram_reads() {
+        let mut ppu = new_empty_rom();
+        ppu.update_ctrl_register(0);
+        ppu.vram[0x0305] = 0x66;
+
+        ppu.write_to_ppu_address(0x23);
+        ppu.write_to_ppu_address(0x05);
+
+        ppu.read_data(); //load_into_buffer
+        assert_eq!(ppu.addr.get(), 0x2306);
+        assert_eq!(ppu.read_data(), 0x66);
+    }
+
+    #[test]
+    fn test_ppu_vram_reads_cross_page() {
+        let mut ppu = new_empty_rom();
+        ppu.update_ctrl_register(0);
+        ppu.vram[0x01ff] = 0x66;
+        ppu.vram[0x0200] = 0x77;
+
+        ppu.write_to_ppu_address(0x21);
+        ppu.write_to_ppu_address(0xff);
+
+        ppu.read_data(); //load_into_buffer
+        assert_eq!(ppu.read_data(), 0x66);
+        assert_eq!(ppu.read_data(), 0x77);
+    }
+
+    #[test]
+    fn test_ppu_vram_reads_step_32() {
+        let mut ppu = new_empty_rom();
+        ppu.update_ctrl_register(0b100);
+        ppu.vram[0x01ff] = 0x66;
+        ppu.vram[0x01ff + 32] = 0x77;
+        ppu.vram[0x01ff + 64] = 0x88;
+
+        ppu.write_to_ppu_address(0x21);
+        ppu.write_to_ppu_address(0xff);
+
+        ppu.read_data(); //load_into_buffer
+        assert_eq!(ppu.read_data(), 0x66);
+        assert_eq!(ppu.read_data(), 0x77);
+        assert_eq!(ppu.read_data(), 0x88);
+    }
+
+    // Horizontal: https://wiki.nesdev.com/w/index.php/Mirroring
+    //   [0x2000 A ] [0x2400 a ]
+    //   [0x2800 B ] [0x2C00 b ]
+    #[test]
+    fn test_vram_horizontal_mirror() {
+        let mut ppu = new_empty_rom();
+        ppu.write_to_ppu_address(0x24);
+        ppu.write_to_ppu_address(0x05);
+
+        ppu.write_to_data_register(0x66); //write to a
+
+        ppu.write_to_ppu_address(0x28);
+        ppu.write_to_ppu_address(0x05);
+
+        ppu.write_to_data_register(0x77); //write to B
+
+        ppu.write_to_ppu_address(0x20);
+        ppu.write_to_ppu_address(0x05);
+
+        ppu.read_data(); //load into buffer
+        assert_eq!(ppu.read_data(), 0x66); //read from A
+
+        ppu.write_to_ppu_address(0x2C);
+        ppu.write_to_ppu_address(0x05);
+
+        ppu.read_data(); //load into buffer
+        assert_eq!(ppu.read_data(), 0x77); //read from b
+    }
+
+    // Vertical: https://wiki.nesdev.com/w/index.php/Mirroring
+    //   [0x2000 A ] [0x2400 B ]
+    //   [0x2800 a ] [0x2C00 b ]
+    #[test]
+    fn test_vram_vertical_mirror() {
+        let mut ppu = PPU::new(vec![0; 2048], ScreenMirroring::Vertical);
+
+        ppu.write_to_ppu_address(0x20);
+        ppu.write_to_ppu_address(0x05);
+
+        ppu.write_to_data_register(0x66); //write to A
+
+        ppu.write_to_ppu_address(0x2C);
+        ppu.write_to_ppu_address(0x05);
+
+        ppu.write_to_data_register(0x77); //write to b
+
+        ppu.write_to_ppu_address(0x28);
+        ppu.write_to_ppu_address(0x05);
+
+        ppu.read_data(); //load into buffer
+        assert_eq!(ppu.read_data(), 0x66); //read from a
+
+        ppu.write_to_ppu_address(0x24);
+        ppu.write_to_ppu_address(0x05);
+
+        ppu.read_data(); //load into buffer
+        assert_eq!(ppu.read_data(), 0x77); //read from B
+    }
+
+    // #[test]
+    // fn test_read_status_resets_latch() {
+    //     let mut ppu = new_empty_rom();
+    //     ppu.vram[0x0305] = 0x66;
+
+    //     ppu.write_to_ppu_address(0x21);
+    //     ppu.write_to_ppu_address(0x23);
+    //     ppu.write_to_ppu_address(0x05);
+
+    //     ppu.read_data(); //load_into_buffer
+    //     assert_ne!(ppu.read_data(), 0x66);
+
+    //     ppu.read_status();
+
+    //     ppu.write_to_ppu_address(0x23);
+    //     ppu.write_to_ppu_address(0x05);
+
+    //     ppu.read_data(); //load_into_buffer
+    //     assert_eq!(ppu.read_data(), 0x66);
+    // }
+
+    #[test]
+    fn test_ppu_vram_mirroring() {
+        let mut ppu = new_empty_rom();
+        ppu.update_ctrl_register(0);
+        ppu.vram[0x0305] = 0x66;
+
+        ppu.write_to_ppu_address(0x63); //0x6305 -> 0x2305
+        ppu.write_to_ppu_address(0x05);
+
+        ppu.read_data(); //load into_buffer
+        assert_eq!(ppu.read_data(), 0x66);
+        // assert_eq!(ppu.addr.read(), 0x0306)
+    }
+
+    // #[test]
+    // fn test_read_status_resets_vblank() {
+    //     let mut ppu = new_empty_rom();
+    //     ppu.status.set_vblank_status(true);
+
+    //     let status = ppu.read_status();
+
+    //     assert_eq!(status >> 7, 1);
+    //     assert_eq!(ppu.status.snapshot() >> 7, 0);
+    // }
+
+    // #[test]
+    // fn test_oam_read_write() {
+    //     let mut ppu = new_empty_rom();
+    //     ppu.write_to_oam_addr(0x10);
+    //     ppu.write_to_oam_data(0x66);
+    //     ppu.write_to_oam_data(0x77);
+
+    //     ppu.write_to_oam_addr(0x10);
+    //     assert_eq!(ppu.read_oam_data(), 0x66);
+
+    //     ppu.write_to_oam_addr(0x11);
+    //     assert_eq!(ppu.read_oam_data(), 0x77);
+    // }
+
+    // #[test]
+    // fn test_oam_dma() {
+    //     let mut ppu = new_empty_rom();
+
+    //     let mut data = [0x66; 256];
+    //     data[0] = 0x77;
+    //     data[255] = 0x88;
+
+    //     ppu.write_to_oam_addr(0x10);
+    //     ppu.write_oam_dma(&data);
+
+    //     ppu.write_to_oam_addr(0xf); //wrap around
+    //     assert_eq!(ppu.read_oam_data(), 0x88);
+
+    //     ppu.write_to_oam_addr(0x10);
+    //     ppu.write_to_oam_addr(0x77);
+    //     ppu.write_to_oam_addr(0x11);
+    //     ppu.write_to_oam_addr(0x66);
+    // }
 }

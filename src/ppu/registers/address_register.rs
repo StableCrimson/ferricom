@@ -11,11 +11,11 @@ impl AddressRegister {
 
   fn set(&mut self, data: u16) {
     self.value.0 = (data >> 8) as u8;
-    self.value.1 = data as u8;
+    self.value.1 = (data & 0xFF) as u8;
   }
 
   pub fn get(&self) -> u16 {
-    (self.value.0 as u16) << 8 | self.value.1 as u16
+    (self.value.0 as u16) << 8 | (self.value.1 as u16)
   }
 
   pub fn update(&mut self, data: u8) {
@@ -26,8 +26,8 @@ impl AddressRegister {
       self.value.1 = data;
     }
 
-    self.hi_ptr = !self.hi_ptr;
     self.mirror_down();
+    self.hi_ptr = !self.hi_ptr;
     
   }
 

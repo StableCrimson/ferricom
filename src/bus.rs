@@ -29,21 +29,28 @@ const PPU_DATA_REGISTER: u16 =        0x2007;
 /// from RAM to OAM
 const PPU_DMA_ADDRESS: u16 =          0x4014;
 
-pub struct Bus {
+pub struct Bus<'call> {
   cpu_vram: [u8; 2048],
   prg_rom: Vec<u8>,
-  ppu: PPU,
-  cycles: usize
+  pub ppu: PPU,
+  cycles: usize,
+  callback: Box<dyn FnMut(&PPU) + 'call>,
 }
 
-impl Bus {
+impl<'a> Bus<'a> {
 
-  pub fn new(rom: ROM) -> Self {
+  pub fn new<'call, F>(rom: ROM, callback: F) -> Bus<'call>
+  where 
+      F: FnMut(&PPU) + 'call {
+    
+    let ppu = PPU::new(rom.chr_rom, rom.mirroring);
+    
     Bus {
       cpu_vram: [0; 2048],
       prg_rom: rom.prg_rom,
-      ppu: PPU::new(rom.chr_rom, rom.mirroring),
-      cycles: 7
+      ppu: ppu,
+      cycles: 0,
+      callback: Box::from(callback)
     }
   }
 
@@ -64,8 +71,14 @@ impl Bus {
   }
 
   pub fn tick_cycles(&mut self, cycles: u8) {
+
     self.cycles += cycles as usize;
-    self.ppu.tick(cycles * 3);
+
+    let frame = self.ppu.tick(cycles * 3);
+    if frame {
+      (self.callback)(&self.ppu);
+    }
+
   }
 
   pub fn get_cycles(&self) -> usize {
@@ -78,7 +91,7 @@ impl Bus {
 
 }
 
-impl Mem for Bus {
+impl Mem for Bus<'_> {
 
   fn mem_read_u8(&mut self, addr: u16) -> u8 {
     match addr {
@@ -87,10 +100,14 @@ impl Mem for Bus {
         self.cpu_vram[mirred_addr as usize]
       },
       PPU_CONTROL_BYTE | PPU_MASK_REGISTER | PPU_OAM_ADDRESS_REGISTER | PPU_SCROLL_BYTE | PPU_ADDRESS_REGISTER | PPU_DMA_ADDRESS => {
-        error!("Attempted to read from write-only PPU address 0x{:0X}", addr);
-        panic!("Attempted to read from write-only PPU address 0x{:0X}", addr);
+        // error!("Attempted to read from write-only PPU address 0x{:0X}", addr);
+        // panic!("Attempted to read from write-only PPU address 0x{:0X}", addr);
+        0
       },
+      PPU_STATUS_REGISTER => self.ppu.read_status(),
+      PPU_OAM_DATA_REGISTER => self.ppu.read_oam_data(),
       PPU_DATA_REGISTER => self.ppu.read_data(),
+      0x4000..=0x4015 => 0,
       0x2008..=PPU_REGISTER_MIRROR_END => {
         let mirrored_addr = addr & 0b0010_0000_0000_0111;
         self.mem_read_u8(mirrored_addr)
@@ -112,6 +129,8 @@ impl Mem for Bus {
         self.cpu_vram[mirrored_addr as usize] = data;
       },
       PPU_CONTROL_BYTE => self.ppu.update_ctrl_register(data),
+      PPU_OAM_ADDRESS_REGISTER => self.ppu.write_oam_addr(data),
+      PPU_OAM_DATA_REGISTER => self.ppu.write_oam_data(data),
       PPU_ADDRESS_REGISTER => self.ppu.write_to_ppu_address(data),
       PPU_DATA_REGISTER => self.ppu.write_to_data_register(data),
       0x2008..=PPU_REGISTER_MIRROR_END => {

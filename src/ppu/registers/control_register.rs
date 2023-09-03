@@ -16,7 +16,7 @@ bitflags! {
 impl ControlRegister {
 
   pub fn new() -> Self {
-    ControlRegister::from_bits_truncate(0)
+    ControlRegister::from_bits_truncate(0b0000_0000)
   }
 
   pub fn is_flag_set(&self, flag_alias: ControlRegister) -> bool {
@@ -26,13 +26,12 @@ impl ControlRegister {
   // ? There has to be a better way to do this
   // ? Probably somewhere in the bitflags documentation
   pub fn update(&mut self, data: u8) {
-    let status = self.bits();
-    self.remove(ControlRegister::from_bits_truncate(status));
+    self.remove(ControlRegister::from_bits_truncate(self.bits()));
     self.insert(ControlRegister::from_bits_truncate(data));
   }
 
   pub fn get_vram_addr_increment(&self) -> u8 {
-    if self.is_flag_set(ControlRegister::VRAM_ADD_INCREMENT) {
+    if self.contains(ControlRegister::VRAM_ADD_INCREMENT) {
       32
     } else {
       1
@@ -41,6 +40,14 @@ impl ControlRegister {
 
   pub fn should_generate_vblank_nmi(&self) -> bool {
     self.contains(ControlRegister::GENERATE_NMI)
+  }
+
+  pub fn background_pattern_address(&self) -> u16 {
+    if self.contains(ControlRegister::BG_PATTERN_ADDR) {
+      0x1000
+    } else {
+      0
+    }
   }
 
 }
