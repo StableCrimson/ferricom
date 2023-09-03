@@ -1,11 +1,11 @@
+pub mod registers;
+
 use log::{error, warn};
 
 use crate::rom::ScreenMirroring;
-
-pub struct AddressRegister {
-  value: (u8, u8),
-  hi_ptr: bool
-}
+use crate::ppu::registers::address_register::AddressRegister;
+use crate::ppu::registers::control_register::ControlRegister;
+use crate::ppu::registers::status_register::StatusRegister;
 
 const CHR_ROM_BEGIN: u16 =        0;
 const CHR_ROM_END: u16 =          0x1FFF;
@@ -14,16 +14,6 @@ const VRAM_MIRROR_END: u16 =      0x2FFF;
 const PALETTE_TABLE_BEGIN: u16 =  0x3F00;
 const PALETTE_TABLE_END: u16 =    0x3FFF;
 
-
-const NAME_TABLE_1: u8 =          0b0000_0001;
-const NAME_TABLE_2: u8 =          0b0000_0010;
-const VRAM_ADD_INCREMENT: u8 =    0b0000_0100;
-const SPRITE_PATTERN_ADDR: u8 =   0b0000_1000;
-const BG_PATTERN_ADDR: u8 =       0b0001_0000;
-const SPRITE_SIZE: u8 =           0b0010_0000;
-const MASTER_SLAVE_SELECT: u8 =   0b0100_0000;
-const GENERATE_NMI: u8 =          0b1000_0000;
-
 pub struct PPU {
   chr_rom: Vec<u8>,
   palette_table: [u8; 32],
@@ -31,64 +21,11 @@ pub struct PPU {
   vram: [u8; 2048],
   screen_mirroring: ScreenMirroring,
   addr: AddressRegister,
-  control: u8,
-  status: u8,
+  control: ControlRegister,
+  status: StatusRegister,
   internal_data_buffer: u8,
-  scanline: u8,
+  scanline: u16,
   cycles: usize
-}
-
-impl AddressRegister {
-
-  pub fn new() -> Self {
-    AddressRegister { value: (0, 0), hi_ptr: true }
-  }
-
-  fn set(&mut self, data: u16) {
-    self.value.0 = (data >> 8) as u8;
-    self.value.1 = data as u8;
-  }
-
-  fn get(&self) -> u16 {
-    (self.value.0 as u16) << 8 | self.value.1 as u16
-  }
-
-  pub fn update(&mut self, data: u8) {
-    
-    if self.hi_ptr {
-      self.value.0 = data;
-    } else {
-      self.value.1 = data;
-    }
-
-    self.hi_ptr = !self.hi_ptr;
-    self.mirror_down();
-    
-  }
-
-  pub fn increment(&mut self, value: u8) {
-
-    let lsb = self.value.1;
-    self.value.1 = self.value.1.wrapping_add(value);
-    
-    if lsb > self.value.1 {
-      self.value.0 = self.value.0.wrapping_add(1);
-    }
-
-    self.mirror_down();
-
-  }
-
-  fn mirror_down(&mut self) {
-    if self.get() > 0x3FFF {
-      self.set(self.get() & 0b0011_1111_1111_1111);
-    }
-  }
-
-  pub fn reset_latch(&mut self) {
-    self.hi_ptr = true;
-  }
-
 }
 
 impl PPU {
@@ -101,15 +38,15 @@ impl PPU {
       vram: [0; 2048],
       screen_mirroring,
       addr: AddressRegister::new(),
-      control: 0,
-      status: 0,
+      control: ControlRegister::new(),
+      status: StatusRegister::new(),
       internal_data_buffer: 0,
       scanline: 0,
       cycles: 21
     }
   }
 
-  pub fn tick(&mut self, cycles: u8) {
+  pub fn tick(&mut self, cycles: u8) -> bool {
 
     self.cycles += cycles as usize;
 
@@ -119,12 +56,21 @@ impl PPU {
       self.scanline += 1;
 
       if self.scanline == 241 {
-        if self.control & GENERATE_NMI == GENERATE_NMI {
-          self.status;
+        if self.control.should_generate_vblank_nmi() {
+          self.status.set_vblank_status(true);
+          todo!("Should trigger a non-maskable interrupt");
         }
       }
 
+      if self.scanline >= 262 {
+        self.scanline = 0;
+        self.status.reset_vblank_status();
+        return true;
+      }
+
     }
+
+    false
 
   }
 
@@ -132,20 +78,12 @@ impl PPU {
     self.addr.update(data);
   }
 
-  fn get_vram_addr_increment(&self) -> u8 {
-    if self.control & VRAM_ADD_INCREMENT == VRAM_ADD_INCREMENT {
-      32
-    } else {
-      1
-    }
-  }
-
   pub fn update_ctrl_register(&mut self, data: u8) {
-    self.control = data;
+    self.control.update(data);
   }
 
   fn increment_vram_addr(&mut self) {
-    self.addr.increment(self.get_vram_addr_increment());
+    self.addr.increment(self.control.get_vram_addr_increment());
   }
 
   pub fn read_data(&mut self) -> u8 {
@@ -166,7 +104,7 @@ impl PPU {
       },
       0x3000..=0x3EFF => panic!("Address space 0x3000..0x3EFF is not expected to be used"),
       0x3F00..=0x3FFF => self.palette_table[(addr-0x3F00) as usize],
-      _ => panic!("Unexpected accessto mirrored adddress space")
+      _ => panic!("Unexpected access to mirrored adddress space")
     }
 
   }

@@ -699,11 +699,7 @@ impl CPU {
     /// If `condition` is true, the specified flag is set.
     /// If `condition` is false, the specified flag is cleared.
     fn conditional_flag_set(&mut self, condition: bool, flag_alias: CPUFlags) {
-        if condition {
-            self.status.insert(flag_alias);
-        } else {
-            self.status.remove(flag_alias);
-        }
+        self.status.set(flag_alias, condition);
     }
 
     fn is_flag_set(&self, flag_alias: CPUFlags) -> bool {
