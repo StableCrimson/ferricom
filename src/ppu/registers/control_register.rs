@@ -50,4 +50,12 @@ impl ControlRegister {
     }
   }
 
+  pub fn sprite_pattern_address(&self) -> u16 {
+    if self.contains(ControlRegister::SPRITE_PATTERN_ADDR) {
+      0x1000
+    } else {
+      0
+    }
+  }
+
 }

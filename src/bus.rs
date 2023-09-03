@@ -142,6 +142,18 @@ impl Mem for Bus<'_> {
         error!("{msg}");
         panic!("{msg}");
       },
+      PPU_DMA_ADDRESS => {
+
+        let mut buffer: [u8; 256] = [0; 256];
+        let msb: u16 = (data as u16) << 8;
+
+        for i in 0..256u16 {
+          buffer[i as usize] = self.mem_read_u8(msb+i);
+        }
+
+        self.ppu.write_oam_dma(&buffer);
+
+      }
       _ => {
         debug!("Ignoring memory access at 0x{:0X}", addr);
       }

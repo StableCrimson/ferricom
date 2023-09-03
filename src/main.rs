@@ -115,8 +115,6 @@ fn main() {
     // let snake_game_code: &Vec<u8> = &(*games::example::SNAKE_GAME_CODE); // example
     let mut cpu = CPU::new(bus);
     
-    println!("{:?}", cpu.bus.ppu.chr_rom);
-
     if nestest_ppu_disabled {
       warn!("Setting program counter to 0xC000. This is a feature for testing only, and is not intended for use when loading actual games.");
       cpu.pc = 0xC000;

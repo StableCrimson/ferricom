@@ -146,6 +146,12 @@ impl PPU {
     self.oam_addr = addr;
   }
 
+  pub fn write_oam_dma(&mut self, data: &[u8; 256]) {
+    for x in data.iter() {
+      self.write_oam_data(*x);
+    }
+  }
+
   pub fn write_to_data_register(&mut self, data: u8) {
     
     let target_addr = self.addr.get();
@@ -314,26 +320,26 @@ pub mod test {
         assert_eq!(ppu.read_data(), 0x77); //read from B
     }
 
-    // #[test]
-    // fn test_read_status_resets_latch() {
-    //     let mut ppu = new_empty_rom();
-    //     ppu.vram[0x0305] = 0x66;
+    #[test]
+    fn test_read_status_resets_latch() {
+        let mut ppu = new_empty_rom();
+        ppu.vram[0x0305] = 0x66;
 
-    //     ppu.write_to_ppu_address(0x21);
-    //     ppu.write_to_ppu_address(0x23);
-    //     ppu.write_to_ppu_address(0x05);
+        ppu.write_to_ppu_address(0x21);
+        ppu.write_to_ppu_address(0x23);
+        ppu.write_to_ppu_address(0x05);
 
-    //     ppu.read_data(); //load_into_buffer
-    //     assert_ne!(ppu.read_data(), 0x66);
+        ppu.read_data(); //load_into_buffer
+        assert_ne!(ppu.read_data(), 0x66);
 
-    //     ppu.read_status();
+        ppu.read_status();
 
-    //     ppu.write_to_ppu_address(0x23);
-    //     ppu.write_to_ppu_address(0x05);
+        ppu.write_to_ppu_address(0x23);
+        ppu.write_to_ppu_address(0x05);
 
-    //     ppu.read_data(); //load_into_buffer
-    //     assert_eq!(ppu.read_data(), 0x66);
-    // }
+        ppu.read_data(); //load_into_buffer
+        assert_eq!(ppu.read_data(), 0x66);
+    }
 
     #[test]
     fn test_ppu_vram_mirroring() {
@@ -349,48 +355,48 @@ pub mod test {
         // assert_eq!(ppu.addr.read(), 0x0306)
     }
 
-    // #[test]
-    // fn test_read_status_resets_vblank() {
-    //     let mut ppu = new_empty_rom();
-    //     ppu.status.set_vblank_status(true);
+    #[test]
+    fn test_read_status_resets_vblank() {
+        let mut ppu = new_empty_rom();
+        ppu.status.set_vblank_status(true);
 
-    //     let status = ppu.read_status();
+        let status = ppu.read_status();
 
-    //     assert_eq!(status >> 7, 1);
-    //     assert_eq!(ppu.status.snapshot() >> 7, 0);
-    // }
+        assert_eq!(status >> 7, 1);
+        assert_eq!(ppu.status.bits() >> 7, 0);
+    }
 
-    // #[test]
-    // fn test_oam_read_write() {
-    //     let mut ppu = new_empty_rom();
-    //     ppu.write_to_oam_addr(0x10);
-    //     ppu.write_to_oam_data(0x66);
-    //     ppu.write_to_oam_data(0x77);
+    #[test]
+    fn test_oam_read_write() {
+        let mut ppu = new_empty_rom();
+        ppu.write_oam_addr(0x10);
+        ppu.write_oam_data(0x66);
+        ppu.write_oam_data(0x77);
 
-    //     ppu.write_to_oam_addr(0x10);
-    //     assert_eq!(ppu.read_oam_data(), 0x66);
+        ppu.write_oam_addr(0x10);
+        assert_eq!(ppu.read_oam_data(), 0x66);
 
-    //     ppu.write_to_oam_addr(0x11);
-    //     assert_eq!(ppu.read_oam_data(), 0x77);
-    // }
+        ppu.write_oam_addr(0x11);
+        assert_eq!(ppu.read_oam_data(), 0x77);
+    }
 
-    // #[test]
-    // fn test_oam_dma() {
-    //     let mut ppu = new_empty_rom();
+    #[test]
+    fn test_oam_dma() {
+        let mut ppu = new_empty_rom();
 
-    //     let mut data = [0x66; 256];
-    //     data[0] = 0x77;
-    //     data[255] = 0x88;
+        let mut data = [0x66; 256];
+        data[0] = 0x77;
+        data[255] = 0x88;
 
-    //     ppu.write_to_oam_addr(0x10);
-    //     ppu.write_oam_dma(&data);
+        ppu.write_oam_addr(0x10);
+        ppu.write_oam_dma(&data);
 
-    //     ppu.write_to_oam_addr(0xf); //wrap around
-    //     assert_eq!(ppu.read_oam_data(), 0x88);
+        ppu.write_oam_addr(0xf); //wrap around
+        assert_eq!(ppu.read_oam_data(), 0x88);
 
-    //     ppu.write_to_oam_addr(0x10);
-    //     ppu.write_to_oam_addr(0x77);
-    //     ppu.write_to_oam_addr(0x11);
-    //     ppu.write_to_oam_addr(0x66);
-    // }
+        ppu.write_oam_addr(0x10);
+        ppu.write_oam_addr(0x77);
+        ppu.write_oam_addr(0x11);
+        ppu.write_oam_addr(0x66);
+    }
 }
