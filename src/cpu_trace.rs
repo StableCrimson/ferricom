@@ -138,8 +138,8 @@ pub fn trace(cpu: &CPU) -> String {
       .to_string();
 
   format!(
-      "{:47} A:{:02x} X:{:02x} Y:{:02x} P:{:02x} SP:{:02x}",
-      asm_str, cpu.acc, cpu.x, cpu.y, cpu.status, cpu.sp
+      "{:47} A:{:02x} X:{:02x} Y:{:02x} P:{:02x} SP:{:02x} CYC:{}",
+      asm_str, cpu.acc, cpu.x, cpu.y, cpu.status, cpu.sp, cpu.bus.get_cycles()
   )
   .to_ascii_uppercase()
 }
@@ -169,15 +169,15 @@ mod test {
            result.push(trace(cpu));
        });
        assert_eq!(
-           "0064  A2 01     LDX #$01                        A:01 X:02 Y:03 P:24 SP:FD",
+           "0064  A2 01     LDX #$01                        A:01 X:02 Y:03 P:24 SP:FD CYC:7",
            result[0]
        );
        assert_eq!(
-           "0066  CA        DEX                             A:01 X:01 Y:03 P:24 SP:FD",
+           "0066  CA        DEX                             A:01 X:01 Y:03 P:24 SP:FD CYC:9",
            result[1]
        );
        assert_eq!(
-           "0067  88        DEY                             A:01 X:00 Y:03 P:26 SP:FD",
+           "0067  88        DEY                             A:01 X:00 Y:03 P:26 SP:FD CYC:11",
            result[2]
        );
    }
@@ -205,7 +205,7 @@ mod test {
            result.push(trace(cpu));
        });
        assert_eq!(
-           "0064  11 33     ORA ($33),Y = 0400 @ 0400 = AA  A:00 X:00 Y:00 P:24 SP:FD",
+           "0064  11 33     ORA ($33),Y = 0400 @ 0400 = AA  A:00 X:00 Y:00 P:24 SP:FD CYC:7",
            result[0]
        );
    }
