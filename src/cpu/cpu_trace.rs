@@ -152,7 +152,7 @@ mod test {
 
    #[test]
    fn test_format_trace() {
-       let mut bus = Bus::new(test_rom(), |_| {});
+       let mut bus = Bus::new(test_rom(), |_, _| {});
        bus.mem_write_u8(100, 0xa2);
        bus.mem_write_u8(101, 0x01);
        bus.mem_write_u8(102, 0xca);
@@ -184,7 +184,7 @@ mod test {
 
    #[test]
    fn test_format_mem_access() {
-       let mut bus = Bus::new(test_rom(), |_| {});
+       let mut bus = Bus::new(test_rom(), |_, _| {});
        // ORA ($33), Y
        bus.mem_write_u8(100, 0x11);
        bus.mem_write_u8(101, 0x33);

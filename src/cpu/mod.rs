@@ -864,7 +864,7 @@ mod tests {
     use crate::rom::tests::test_rom;
 
     fn init_test_cpu<'a>() -> CPU<'a> {
-        CPU::new(Bus::new(test_rom(), |_| {}))
+        CPU::new(Bus::new(test_rom(), |_, _| {}))
     }
 
     #[test]

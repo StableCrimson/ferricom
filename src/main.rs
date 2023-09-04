@@ -3,19 +3,26 @@ pub mod ppu;
 pub mod instructions;
 pub mod rom;
 pub mod bus;
+pub mod gamepad;
 
 extern crate lazy_static;
 extern crate bitflags;
 
-use cpu::{CPU, Mem};
-use bus::Bus;
-use ppu::{frame::Frame, palette, render};
-use rom::ROM;
+use cpu::CPU;
 use cpu::cpu_trace::trace;
+use cpu::cpu_status_flags::CPUFlags;
+use bus::Bus;
+use ppu::{palette, render, PPU};
+use ppu::frame::Frame;
+use rom::ROM;
+use gamepad::Gamepad;
+use gamepad::gamepad_register::JoypadButton;
 
 use std::fs;
 use log::{LevelFilter, info, warn, error, trace};
 use clap::Parser;
+use std::collections::HashMap;
+use sdl2::{pixels::PixelFormatEnum, event::Event, keyboard::Keycode};
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about=None)]
@@ -39,11 +46,6 @@ pub struct Arguments {
 
 #[cfg(not(tarpaulin_include))]
 fn main() {
-    use std::time::Duration;
-
-    use sdl2::{pixels::PixelFormatEnum, event::Event, keyboard::Keycode};
-
-    use crate::{cpu::cpu_status_flags::CPUFlags, ppu::PPU};
 
     simple_logging::log_to_file("logs/log.log", LevelFilter::Debug).unwrap();
 
@@ -64,17 +66,21 @@ fn main() {
         },
     };
 
-    info!("ROM is 0X{:0X} bytes in size", byte_code.len());
     let rom = ROM::new(&byte_code);
+
+    info!("ROM is 0X{:0X} bytes in size", byte_code.len());
     info!("ROM successfully loaded!");
     info!("========================");
     info!("Program ROM: 0X{:0X} bytes", rom.prg_rom.len());
     info!("Character ROM: 0X{:0X} bytes", rom.chr_rom.len());
 
+    let game_name = *file_path.split('/').collect::<Vec<_>>().last().unwrap();
+    let window_title = format!("ferricom v0.1.0 EXPERIMENTAL | {}", game_name);
+
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
     let window = video_subsystem
-        .window("ferricom chr rom viewer", (256.0 * 3.0) as u32, (240.0 * 3.0) as u32)
+        .window(&window_title, (256.0 * 3.0) as u32, (240.0 * 3.0) as u32)
         .position_centered()
         .build()
         .unwrap();
@@ -90,7 +96,17 @@ fn main() {
 
     let mut frame = Frame::new();
 
-    let bus = Bus::new(rom, move |ppu: &PPU| {
+    let mut key_map = HashMap::new();
+    key_map.insert(Keycode::Down, JoypadButton::DOWN);
+    key_map.insert(Keycode::Up, JoypadButton::UP);
+    key_map.insert(Keycode::Right, JoypadButton::RIGHT);
+    key_map.insert(Keycode::Left, JoypadButton::LEFT);
+    key_map.insert(Keycode::Space, JoypadButton::SELECT);
+    key_map.insert(Keycode::Return, JoypadButton::START);
+    key_map.insert(Keycode::A, JoypadButton::BUTTON_A);
+    key_map.insert(Keycode::S, JoypadButton::BUTTON_B);
+
+    let bus = Bus::new(rom, move |ppu: &PPU, gamepad: &mut Gamepad| {
       render::render(ppu, &mut frame);
         texture.update(None, &frame.data, 256 * 3).unwrap();
 
@@ -104,15 +120,23 @@ fn main() {
                   keycode: Some(Keycode::Escape),
                   ..
               } => std::process::exit(0),
+
+              Event::KeyDown { keycode, .. } => {
+                if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                    gamepad.set_button_pressed_status(*key, true);
+                }
+            }
+            Event::KeyUp { keycode, .. } => {
+                if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
+                    gamepad.set_button_pressed_status(*key, false);
+                }
+            }
+
               _ => { /* do nothing */ }
             }
          }
-
-      // std::thread::sleep(Duration::from_millis(1_000));
-
     });
 
-    // let snake_game_code: &Vec<u8> = &(*games::example::SNAKE_GAME_CODE); // example
     let mut cpu = CPU::new(bus);
     
     if nestest_ppu_disabled {
@@ -125,18 +149,13 @@ fn main() {
 
     let _ = simple_logging::log_to_file("logs/cpu_trace.log", LevelFilter::Trace);
 
-
-    cpu.reset();
     cpu.run_with_callback(move |cpu| {
 
         if cpu_tracing_enabled {
           let trace_line = trace(cpu);
           trace!("{}", trace_line);
-          println!("{}", trace_line);
+          // println!("{}", trace_line);
         }
 
     });
-
-    info!("0x6000: {:0x}", cpu.mem_read_u16(0x6000));
-
 }
