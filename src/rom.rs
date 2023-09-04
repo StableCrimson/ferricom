@@ -1,3 +1,5 @@
+use std::fs;
+use std::path::Path;
 use log::{debug, warn, error};
 
 const HEADER_SIZE: usize = 16;
@@ -27,6 +29,7 @@ pub enum ScreenMirroring {
 }
 
 pub struct ROM {
+  pub name: String,
   pub prg_rom: Vec<u8>,
   pub chr_rom: Vec<u8>,
   pub mirroring: ScreenMirroring,
@@ -35,14 +38,27 @@ pub struct ROM {
 
 impl ROM {
 
-  #[cfg(not(tarpaulin_include))]
-  pub fn new(byte_code: &[u8]) -> ROM {
+  pub fn from_path<P: AsRef<Path>>(path: P) -> Result<ROM, String> {
 
-    let header = ROM::retrieve_and_verify_header(byte_code).unwrap_or_else(|msg| {
-      error!("{msg}");
-      panic!("ERROR: {msg}");
-    });
-  
+    let path = path.as_ref();
+    let name = path.file_stem().unwrap().to_str().unwrap(); // yuck
+
+    let Ok(byte_code) = fs::read(path) else {
+      return Err(format!("Unable to read ROM \"{}\"", path.to_string_lossy()));
+    };
+
+    ROM::from_rom(name, &byte_code)
+
+  }
+
+  pub fn from_rom<S>(name: S, byte_code: &[u8]) -> Result<ROM, String> where 
+  S: ToString,  {
+
+    let header = match ROM::retrieve_and_verify_header(&byte_code) {
+      Ok(header) => header,
+      Err(msg) => return Err(msg)
+    };
+
     let prg_rom_size = header[4] as usize * PRG_ROM_PAGE_SIZE;
     let chr_rom_size = header[5] as usize * CHR_ROM_PAGE_SIZE;
     let version = ROM::get_ines_version(header);
@@ -55,7 +71,7 @@ impl ROM {
         error!("{msg}");
         panic!("ERROR: {msg}");
       }
-      warn!("WARNING: iNES V2 is not officially supported, but will work as V1 because of backwards compatibility");
+      warn!("WARNING: iNES V2 is not officially supported, but will work because of backwards compatibility with iNES V1");
     }
   
     let mapper = header[7] & 0b1111_0000 | header[6] >> 4;
@@ -73,27 +89,28 @@ impl ROM {
     let mirroring = ROM::get_screen_mirroring(header);
 
     debug!("Screen mapping: {:?}", mirroring);
-  
-    ROM {
+
+    Ok(ROM {
+      name: name.to_string(),
       prg_rom: byte_code[prg_rom_offset..(prg_rom_offset+prg_rom_size)].to_vec(),
       chr_rom: byte_code[chr_rom_offset..(chr_rom_offset+chr_rom_size)].to_vec(),
       mirroring,
       mapper
-    }
+    })
   
   }
 
-  fn retrieve_and_verify_header(byte_code: &[u8]) -> Result<&[u8], &str> {
+  fn retrieve_and_verify_header(byte_code: &[u8]) -> Result<&[u8], String> {
 
     let header = match byte_code.get(0..HEADER_SIZE) {
       Some(header) => header,
-      None => return Err("Error reading ROM header. ROM may be malformed")
+      None => return Err("Error reading ROM header. ROM may be malformed".to_string())
     };
 
     let nes_signature = vec![0x4E, 0x45, 0x53, 0x1A];
 
     if header[0..4] != nes_signature {
-      return Err("Header does not contain signature bytes. ROM may be malformed or invalid");
+      return Err("Header does not contain signature bytes. ROM may be malformed or invalid".to_string());
     }
 
     Ok(header)
@@ -167,18 +184,18 @@ pub mod tests {
       result
   }
 
-  pub fn test_rom() -> ROM {
-      let test_rom = create_rom(TestRom {
-          header: vec![
-              0x4E, 0x45, 0x53, 0x1A, 0x02, 0x01, 0x31, 00, 00, 00, 00, 00, 00, 00, 00, 00,
-          ],
-          trainer: None,
-          pgp_rom: vec![1; 2 * PRG_ROM_PAGE_SIZE],
-          chr_rom: vec![2; 1 * CHR_ROM_PAGE_SIZE],
-      });
+  // pub fn test_rom() -> ROM {
+  //     let test_rom = create_rom(TestRom {
+  //         header: vec![
+  //             0x4E, 0x45, 0x53, 0x1A, 0x02, 0x01, 0x31, 00, 00, 00, 00, 00, 00, 00, 00, 00,
+  //         ],
+  //         trainer: None,
+  //         pgp_rom: vec![1; 2 * PRG_ROM_PAGE_SIZE],
+  //         chr_rom: vec![2; 1 * CHR_ROM_PAGE_SIZE],
+  //     });
 
-      ROM::new(&test_rom)
-  }
+  //     ROM::new("".to_string()).unwrap();
+  // }
 
   #[test]
   fn test_retrieve_and_verify_header() {

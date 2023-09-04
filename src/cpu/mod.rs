@@ -420,21 +420,23 @@ impl<'a> CPU<'a> {
 
     fn inclusive_or(&mut self, addressing_mode: &AddressingMode) {
 
-        let (target_addr, _) = self.get_operand_address(addressing_mode);
+        let (target_addr, page_crossed) = self.get_operand_address(addressing_mode);
         let data = self.mem_read_u8(target_addr);
 
         self.acc |= data;
         self.set_negative_and_zero_flags(self.acc);
+        self.tick_if_page_crossed(page_crossed);
 
     }
 
     fn exclusive_or(&mut self, addressing_mode: &AddressingMode) {
 
-        let (target_addr, _) = self.get_operand_address(addressing_mode);
+        let (target_addr, page_crossed) = self.get_operand_address(addressing_mode);
         let data = self.mem_read_u8(target_addr);
 
         self.acc ^= data;
         self.set_negative_and_zero_flags(self.acc);
+        self.tick_if_page_crossed(page_crossed);
 
     }
 
@@ -554,15 +556,17 @@ impl<'a> CPU<'a> {
     }
 
     fn add_with_carry(&mut self, addressing_mode: &AddressingMode) {
-        let (target_addr, _) = self.get_operand_address(addressing_mode);
+        let (target_addr, page_crossed) = self.get_operand_address(addressing_mode);
         let data = self.mem_read_u8(target_addr);
         self.add_to_acc(data);
+        self.tick_if_page_crossed(page_crossed);
     }
 
     fn subtract_with_carry(&mut self, addressing_mode: &AddressingMode) {
-        let (target_addr, _) = self.get_operand_address(addressing_mode);
+        let (target_addr, page_crossed) = self.get_operand_address(addressing_mode);
         let data = self.mem_read_u8(target_addr) as i8;
         self.add_to_acc(data.wrapping_neg().wrapping_sub(1) as u8);
+        self.tick_if_page_crossed(page_crossed);
     }
 
     fn acc_shift_left(&mut self) {
@@ -814,7 +818,7 @@ impl<'a> CPU<'a> {
 
     fn compare_register(&mut self, addressing_mode: &AddressingMode, target_register: &RegisterID) {
 
-        let (target_addr, _) = self.get_operand_address(addressing_mode);
+        let (target_addr, page_crossed) = self.get_operand_address(addressing_mode);
         let data = self.mem_read_u8(target_addr);
         let register_value = match target_register {
             RegisterID::ACC => self.acc,
@@ -826,13 +830,15 @@ impl<'a> CPU<'a> {
         let result = register_value.wrapping_sub(data);
         self.set_negative_and_zero_flags(result);
         self.conditional_flag_set(register_value >= data, CPUFlags::CARRY);
+        self.tick_if_page_crossed(page_crossed);
     }
 
     fn and(&mut self, addressing_mode: &AddressingMode) {
-        let (target_addr, _) = self.get_operand_address(addressing_mode);
+        let (target_addr, page_crossed) = self.get_operand_address(addressing_mode);
         let data = self.mem_read_u8(target_addr);
         self.acc &= data;
         self.set_negative_and_zero_flags(self.acc);
+        self.tick_if_page_crossed(page_crossed);
     }
 
     fn bit(&mut self, addressing_mode: &AddressingMode) {

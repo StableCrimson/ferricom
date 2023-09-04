@@ -18,7 +18,6 @@ use rom::ROM;
 use gamepad::Gamepad;
 use gamepad::gamepad_register::JoypadButton;
 
-use std::fs;
 use log::{LevelFilter, info, warn, error, trace};
 use clap::Parser;
 use std::collections::HashMap;
@@ -57,25 +56,21 @@ fn main() {
     let cpu_tracing_enabled = args.cpu_tracelog;
     let nestest_ppu_disabled = args.disable_nestest_ppu_output;
 
-    let byte_code = match fs::read(file_path) {
-        Ok(byte_code) => byte_code,
-        Err(_) => {
-            let msg = format!("Unable to read ROM \"{file_path}\"");
-            error!("{msg}");
-            panic!("{msg}")
-        },
+    let rom = match ROM::from_path(file_path) {
+      Ok(rom) => rom,
+      Err(msg) => {
+        error!("{msg}");
+        panic!("{msg}");
+      }
     };
 
-    let rom = ROM::new(&byte_code);
-
-    info!("ROM is 0X{:0X} bytes in size", byte_code.len());
+    // info!("ROM is 0X{:0X} bytes in size", byte_code.len());
     info!("ROM successfully loaded!");
     info!("========================");
     info!("Program ROM: 0X{:0X} bytes", rom.prg_rom.len());
     info!("Character ROM: 0X{:0X} bytes", rom.chr_rom.len());
 
-    let game_name = *file_path.split('/').collect::<Vec<_>>().last().unwrap();
-    let window_title = format!("ferricom v0.1.0 EXPERIMENTAL | {}", game_name);
+    let window_title = format!("ferricom v0.1.0 EXPERIMENTAL | {}", rom.name);
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
