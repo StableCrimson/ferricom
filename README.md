@@ -14,7 +14,7 @@ If this project helps you write your own emulator or learn Rust, then even bette
 - [x] Memory into its own module
 - [x] ROM loading
 - [x] PPU (Basic)
-- [ ] Input (Basic)
+- [x] Input (Basic)
 - [ ] APU
 - [ ] PPU (Advanced)
 - [ ] Build for multiple platforms

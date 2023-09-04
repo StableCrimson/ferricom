@@ -12,8 +12,10 @@ use crate::ppu::registers::status_register::StatusRegister;
 
 const CHR_ROM_BEGIN: u16 =        0;
 const CHR_ROM_END: u16 =          0x1FFF;
-const VRAM_MIRROR_BEGIN: u16 =    0x2000;
-const VRAM_MIRROR_END: u16 =      0x2FFF;
+const VRAM_NAMETABLES_BEGIN: u16 =    0x2000;
+const VRAM_NAMETABLES_END: u16 =      0x2FFF;
+const VRAM_MIRROR_BEGIN: u16 =        0x3000;
+const VRAM_MIRROR_END: u16 =          0x3EFF;
 const PALETTE_TABLE_BEGIN: u16 =  0x3F00;
 const PALETTE_TABLE_END: u16 =    0x3FFF;
 
@@ -112,8 +114,13 @@ impl PPU {
 
   pub fn read_data(&mut self) -> u8 {
 
-    let addr = self.addr.get();
+    let mut addr = self.addr.get();
     self.increment_vram_addr();
+
+    // Mirror down to 0x2000->0x2EFF
+    if addr >= VRAM_MIRROR_BEGIN && addr <= VRAM_MIRROR_END {
+      addr -= 0x1000;
+    }
 
     match addr {
       0..=0x1FFF => {
@@ -126,7 +133,6 @@ impl PPU {
         self.internal_data_buffer = self.vram[self.mirror_vram_addr(addr) as usize];
         result
       },
-      0x3000..=0x3EFF => panic!("Address space 0x3000..0x3EFF is not expected to be used"),
       0x3F00..=0x3FFF => self.palette_table[(addr-0x3F00) as usize],
       _ => panic!("Unexpected access to mirrored adddress space")
     }
@@ -154,13 +160,18 @@ impl PPU {
 
   pub fn write_to_data_register(&mut self, data: u8) {
     
-    let target_addr = self.addr.get();
+    let mut target_addr = self.addr.get();
+
+    // Mirror down to 0x2000->0x2EFF
+    if target_addr >= VRAM_MIRROR_BEGIN && target_addr <= VRAM_MIRROR_END {
+      target_addr -= 0x1000;
+    }
 
     match target_addr {
       CHR_ROM_BEGIN..=CHR_ROM_END => {
         warn!("Attempted to write to character rom address space: 0x{:0X}", target_addr);
       },
-      VRAM_MIRROR_BEGIN..=VRAM_MIRROR_END => {
+      VRAM_NAMETABLES_BEGIN..=VRAM_NAMETABLES_END => {
         self.vram[self.mirror_vram_addr(target_addr) as usize] = data;
       },
       0x3F10 | 0x3F14 | 0x3F18 | 0x3F1C => {
@@ -171,8 +182,8 @@ impl PPU {
         self.palette_table[(target_addr - 0x3F00) as usize] = data;
       }
       _ => {
-        error!("Unable to access mirrored address space: 0x{:0X}", target_addr);
-        panic!("Unable to access mirrored address space: 0x{:0X}", target_addr);
+        // error!("Unable to access mirrored address space: 0x{:0X}", target_addr);
+        // panic!("Unable to access mirrored address space: 0x{:0X}", target_addr);
       }
     }
 

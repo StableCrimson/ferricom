@@ -1,5 +1,6 @@
 use crate::{cpu::Mem, ppu::PPU};
 use crate::rom::ROM;
+use crate::gamepad::Gamepad;
 use log::{debug, error};
 
 const RAM_START: u16 =                0x0000;
@@ -29,19 +30,22 @@ const PPU_DATA_REGISTER: u16 =        0x2007;
 /// from RAM to OAM
 const PPU_DMA_ADDRESS: u16 =          0x4014;
 
+const GAMEPAD_ADDRESS: u16 =          0x4016;
+
 pub struct Bus<'call> {
   cpu_vram: [u8; 2048],
   prg_rom: Vec<u8>,
   pub ppu: PPU,
+  gamepad: Gamepad,
   cycles: usize,
-  callback: Box<dyn FnMut(&PPU) + 'call>,
+  callback: Box<dyn FnMut(&PPU, &mut Gamepad) + 'call>,
 }
 
 impl<'a> Bus<'a> {
 
   pub fn new<'call, F>(rom: ROM, callback: F) -> Bus<'call>
   where 
-      F: FnMut(&PPU) + 'call {
+      F: FnMut(&PPU, &mut Gamepad) + 'call {
     
     let ppu = PPU::new(rom.chr_rom, rom.mirroring);
     
@@ -49,6 +53,7 @@ impl<'a> Bus<'a> {
       cpu_vram: [0; 2048],
       prg_rom: rom.prg_rom,
       ppu: ppu,
+      gamepad: Gamepad::new(),
       cycles: 0,
       callback: Box::from(callback)
     }
@@ -76,7 +81,7 @@ impl<'a> Bus<'a> {
 
     let frame = self.ppu.tick(cycles * 3);
     if frame {
-      (self.callback)(&self.ppu);
+      (self.callback)(&self.ppu, &mut self.gamepad);
     }
 
   }
@@ -115,6 +120,7 @@ impl Mem for Bus<'_> {
       ROM_SPACE_START..=ROM_SPACE_END => {
         self.read_prg_rom(addr)
       },
+      GAMEPAD_ADDRESS => self.gamepad.read(),
       _ => {
         debug!("Ignoring memory read at 0x{:0X}", addr);
         0
@@ -138,10 +144,12 @@ impl Mem for Bus<'_> {
         self.mem_write_u8(mirrored_addr, data);
       },
       ROM_SPACE_START..=ROM_SPACE_END => {
-        let msg = "Attempted to write to ROM address space!";
-        error!("{msg}");
-        panic!("{msg}");
+        // let msg = "Attempted to write to ROM address space!";
+        // error!("{msg}");
+        // panic!("{msg}");
+        // self.prg_rom[addr as usize -0x8000] = data;
       },
+      GAMEPAD_ADDRESS => self.gamepad.write(data),
       PPU_DMA_ADDRESS => {
 
         let mut buffer: [u8; 256] = [0; 256];
