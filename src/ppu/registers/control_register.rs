@@ -1,6 +1,7 @@
 use bitflags::bitflags;
 
 bitflags! {
+  #[derive(Default)]
   pub struct ControlRegister: u8 {
     const NAME_TABLE_1 =          0b0000_0001;
     const NAME_TABLE_2 =          0b0000_0010;
@@ -17,10 +18,6 @@ impl ControlRegister {
 
   pub fn new() -> Self {
     ControlRegister::from_bits_truncate(0b0000_0000)
-  }
-
-  pub fn is_flag_set(&self, flag_alias: ControlRegister) -> bool {
-    self.contains(flag_alias)
   }
 
   // ? There has to be a better way to do this
@@ -56,6 +53,61 @@ impl ControlRegister {
     } else {
       0
     }
+  }
+
+}
+
+#[cfg(test)]
+mod tests{
+
+  use super::*;
+
+  #[test]
+  fn test_update() {
+
+    let mut reg = ControlRegister::default();
+
+    let dummy_status = 0b1010_1010;
+    reg.update(dummy_status);
+
+    let new_status = 0b0101_0101;
+    reg.update(new_status);
+
+    assert_eq!(reg.bits(), new_status)
+
+  }
+
+  #[test]
+  fn test_get_vram_addr_increment() {
+
+    let mut reg = ControlRegister::default();
+    assert_eq!(reg.get_vram_addr_increment(), 1);
+
+    reg.insert(ControlRegister::VRAM_ADD_INCREMENT);
+    assert_eq!(reg.get_vram_addr_increment(), 32);
+
+  }
+
+  #[test]
+  fn test_get_background_pattern_addr() {
+
+    let mut reg = ControlRegister::default();
+    assert_eq!(reg.background_pattern_address(), 0);
+
+    reg.insert(ControlRegister::BG_PATTERN_ADDR);
+    assert_eq!(reg.background_pattern_address(), 0x1000);
+
+  }
+
+  #[test]
+  fn test_get_sprite_pattern_addr() {
+
+    let mut reg = ControlRegister::default();
+    assert_eq!(reg.sprite_pattern_address(), 0);
+
+    reg.insert(ControlRegister::SPRITE_PATTERN_ADDR);
+    assert_eq!(reg.sprite_pattern_address(), 0x1000);
+
   }
 
 }

@@ -1,17 +1,16 @@
-use std::collections::HashMap;
 use log::error;
 
 use crate::cpu::{CPU, Mem, AddressingMode};
-use crate::instructions::{Instruction, CPU_INSTRUCTION_SET};
+use crate::instructions::CPU_INSTRUCTION_SET;
 
 pub fn trace(cpu: &mut CPU) -> String {
         
-  let opcodes: &HashMap<u8, &'static Instruction> = &CPU_INSTRUCTION_SET;
+  let opcodes = &CPU_INSTRUCTION_SET;
 
   // TODO: Remove the match statement once all 256 opcodes are implemented
   let code = cpu.mem_read_u8(cpu.pc);
   let opcode = match opcodes.get(&code) {
-    Some(ins) => ins,
+    Some(ins) => *ins,
     None => {
         error!("Instruction 0x{:0X} is invalid or unimplemented", code);
         panic!("Instruction 0x{:0X} is invalid or unimplemented", code);
