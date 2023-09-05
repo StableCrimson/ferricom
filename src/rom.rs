@@ -1,6 +1,6 @@
 use std::fs;
 use std::path::Path;
-use log::{debug, warn, error};
+use log::{debug, warn};
 
 const HEADER_SIZE: usize = 16;
 const TRAINER_SIZE: usize = 512;
@@ -47,14 +47,14 @@ impl ROM {
       return Err(format!("Unable to read ROM \"{}\"", path.to_string_lossy()));
     };
 
-    ROM::from_rom(name, &byte_code)
+    ROM::from_bytes(name, &byte_code)
 
   }
 
-  pub fn from_rom<S>(name: S, byte_code: &[u8]) -> Result<ROM, String> where 
+  pub fn from_bytes<S>(name: S, byte_code: &[u8]) -> Result<ROM, String> where 
   S: ToString,  {
 
-    let header = match ROM::retrieve_and_verify_header(&byte_code) {
+    let header = match ROM::retrieve_and_verify_header(byte_code) {
       Ok(header) => header,
       Err(msg) => return Err(msg)
     };
@@ -67,9 +67,7 @@ impl ROM {
   
     if version != iNESVersion::iNES_1 {
       if version != iNESVersion::iNES_2 {
-        let msg = "ROM must be either iNES_1 or iNES_2!";
-        error!("{msg}");
-        panic!("ERROR: {msg}");
+        return Err("ROM must be either iNES_1 or iNES_2!".to_string());
       }
       warn!("WARNING: iNES V2 is not officially supported, but will work because of backwards compatibility with iNES V1");
     }
@@ -184,18 +182,18 @@ pub mod tests {
       result
   }
 
-  // pub fn test_rom() -> ROM {
-  //     let test_rom = create_rom(TestRom {
-  //         header: vec![
-  //             0x4E, 0x45, 0x53, 0x1A, 0x02, 0x01, 0x31, 00, 00, 00, 00, 00, 00, 00, 00, 00,
-  //         ],
-  //         trainer: None,
-  //         pgp_rom: vec![1; 2 * PRG_ROM_PAGE_SIZE],
-  //         chr_rom: vec![2; 1 * CHR_ROM_PAGE_SIZE],
-  //     });
+  pub fn test_rom() -> ROM {
+      let test_rom = create_rom(TestRom {
+          header: vec![
+              0x4E, 0x45, 0x53, 0x1A, 0x02, 0x01, 0x31, 00, 00, 00, 00, 00, 00, 00, 00, 00,
+          ],
+          trainer: None,
+          pgp_rom: vec![1; 2 * PRG_ROM_PAGE_SIZE],
+          chr_rom: vec![2; 1 * CHR_ROM_PAGE_SIZE],
+      });
 
-  //     ROM::new("".to_string()).unwrap();
-  // }
+      ROM::from_bytes("".to_string(), &test_rom).unwrap()
+  }
 
   #[test]
   fn test_retrieve_and_verify_header() {

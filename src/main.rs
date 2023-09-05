@@ -21,6 +21,7 @@ use gamepad::gamepad_register::JoypadButton;
 use log::{LevelFilter, info, warn, error, trace};
 use clap::Parser;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use sdl2::{pixels::PixelFormatEnum, event::Event, keyboard::Keycode};
 
 #[derive(Parser, Debug)]
@@ -28,7 +29,7 @@ use sdl2::{pixels::PixelFormatEnum, event::Event, keyboard::Keycode};
 pub struct Arguments {
 
   /// Path to the ROM file to load, ending in `.nes`
-  rom_file: String,
+  rom_file: PathBuf,
 
   /// Enable generating a tracelog of the CPU.
   /// Will be found in `./logs/cpu_trace.log`
@@ -51,7 +52,7 @@ fn main() {
     let args = Arguments::parse();
 
     let file_path = &args.rom_file;
-    info!("Target ROM: {}", file_path);
+    info!("Target ROM: {}", file_path.to_string_lossy());
 
     let cpu_tracing_enabled = args.cpu_tracelog;
     let nestest_ppu_disabled = args.disable_nestest_ppu_output;

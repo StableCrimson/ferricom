@@ -100,7 +100,7 @@ impl<'a> CPU<'a> {
     /// Create a new 6502 CPU in its default state,
     /// able to provide a custom `Bus` if you want to
     /// for some reason
-    pub fn new<'b>(bus: Bus<'b>) -> CPU<'b> {
+    pub fn new(bus: Bus<'_>) -> CPU<'_> {
         CPU {
             pc: 0x0000,
             sp: 0xFD,
@@ -160,9 +160,6 @@ impl<'a> CPU<'a> {
     pub fn run_with_callback<F>(&mut self, mut callback: F) where F: FnMut(&mut CPU), {
 
         let ins_set = &(*instructions::CPU_INSTRUCTION_SET);
-
-        // TODO REMOVE LATER
-        // println!("IMPLEMENTED {} OF 256 INSTRUCTIONS", ins_set.len());
 
         loop {
 
@@ -337,7 +334,7 @@ impl<'a> CPU<'a> {
 
         self.stack_push_u16(self.pc);
 
-        let mut status = self.status.clone();
+        let mut status = self.status;
         status.set(CPUFlags::BREAK_COMMAND_4, interrupt.interrupt_flag_mask & CPUFlags::BREAK_COMMAND_4.bits() != 0);
         status.set(CPUFlags::BREAK_COMMAND_5, interrupt.interrupt_flag_mask & CPUFlags::BREAK_COMMAND_5.bits() != 0);
         self.stack_push_u8(status.bits());

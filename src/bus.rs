@@ -1,11 +1,10 @@
 use crate::{cpu::Mem, ppu::PPU};
 use crate::rom::ROM;
 use crate::gamepad::Gamepad;
-use log::{debug, error};
+use log::debug;
 
 const RAM_START: u16 =                0x0000;
 const RAM_MIRROR_END: u16 =           0x1FFF;
-const PPU_REGISTER_START: u16 =       0x2000;
 const PPU_REGISTER_MIRROR_END: u16 =  0x3FFF;
 const ROM_SPACE_START: u16 =          0x8000;
 const ROM_SPACE_END: u16 =            0xFFFF;
@@ -52,7 +51,7 @@ impl<'a> Bus<'a> {
     Bus {
       cpu_vram: [0; 2048],
       prg_rom: rom.prg_rom,
-      ppu: ppu,
+      ppu,
       gamepad: Gamepad::new(),
       cycles: 0,
       callback: Box::from(callback)

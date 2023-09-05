@@ -3,7 +3,7 @@ pub enum InterruptType {
 }
 
 pub(super) struct Interrupt {
-  pub(super) interrupt_type: InterruptType,
+  interrupt_type: InterruptType,
   pub(super) vector_address: u16,
   pub(super) interrupt_flag_mask: u8,
   pub(super) cycles: u8,

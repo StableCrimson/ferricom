@@ -3,7 +3,7 @@ pub mod palette;
 pub mod frame;
 pub mod render;
 
-use log::{error, warn};
+use log::warn;
 
 use crate::rom::ScreenMirroring;
 use crate::ppu::registers::address_register::AddressRegister;
@@ -78,7 +78,7 @@ impl PPU {
         return true;
       }
     }
-    return false;
+    false
   }
 
   pub fn write_to_ppu_address(&mut self, data: u8) {
@@ -118,7 +118,7 @@ impl PPU {
     self.increment_vram_addr();
 
     // Mirror down to 0x2000->0x2EFF
-    if addr >= VRAM_MIRROR_BEGIN && addr <= VRAM_MIRROR_END {
+    if (VRAM_MIRROR_BEGIN..=VRAM_MIRROR_END).contains(&addr) {
       addr -= 0x1000;
     }
 
@@ -163,7 +163,7 @@ impl PPU {
     let mut target_addr = self.addr.get();
 
     // Mirror down to 0x2000->0x2EFF
-    if target_addr >= VRAM_MIRROR_BEGIN && target_addr <= VRAM_MIRROR_END {
+    if (VRAM_MIRROR_BEGIN..=VRAM_MIRROR_END).contains(&target_addr) {
       target_addr -= 0x1000;
     }
 
