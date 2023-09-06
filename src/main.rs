@@ -69,6 +69,7 @@ fn main() {
     info!("ROM successfully loaded!");
     info!("========================");
     info!("Program ROM: 0X{:0X} bytes", rom.prg_rom.len());
+    info!("Program RAM: 0X{:0X} bytes", rom.prg_ram.len());
     info!("Character ROM: 0X{:0X} bytes", rom.chr_rom.len());
 
     let window_title = format!("ferricom v0.1.0 EXPERIMENTAL | {}", rom.name);

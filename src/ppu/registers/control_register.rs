@@ -17,7 +17,7 @@ bitflags! {
 impl ControlRegister {
 
   pub fn new() -> Self {
-    ControlRegister::from_bits_truncate(0b0000_0000)
+    ControlRegister::from_bits_truncate(0)
   }
 
   // ? There has to be a better way to do this

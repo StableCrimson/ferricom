@@ -6,6 +6,8 @@ const HEADER_SIZE: usize = 16;
 const TRAINER_SIZE: usize = 512;
 const PRG_ROM_PAGE_SIZE: usize = 16384;
 const CHR_ROM_PAGE_SIZE: usize = 8192;
+const PRG_RAM_PAGE_SIZE: usize = 8192;
+const CHR_RAM_PAGE_SIZE: usize = 4096;
 
 /// `iNESVersion::Indeterminate` means that the file is either `iNES` 0.7 or `iNES` Archaic.
 /// Right now I do not dileniate between the two because ferricom currently only supports `iNES` 1.
@@ -28,10 +30,18 @@ pub enum ScreenMirroring {
   FourScreen
 }
 
+pub enum Region {
+  NSTC,
+  PAL
+}
+
 pub struct ROM {
   pub name: String,
+  pub region: Region,
   pub prg_rom: Vec<u8>,
+  pub prg_ram: Vec<u8>,
   pub chr_rom: Vec<u8>,
+  pub chr_ram: Vec<u8>,
   pub mirroring: ScreenMirroring,
   pub mapper: u8
 }
@@ -51,18 +61,35 @@ impl ROM {
 
   }
 
-  pub fn from_bytes<S>(name: S, byte_code: &[u8]) -> Result<ROM, String> where 
-  S: ToString,  {
+  pub fn from_bytes<S>(name: S, byte_code: &[u8]) -> Result<ROM, String> where S: ToString,  {
 
     let header = match ROM::retrieve_and_verify_header(byte_code) {
       Ok(header) => header,
       Err(msg) => return Err(msg)
     };
 
+    let mut has_chr_ram = false;
+    let mut chr_ram_size = 0;
+
     let prg_rom_size = header[4] as usize * PRG_ROM_PAGE_SIZE;
     let chr_rom_size = header[5] as usize * CHR_ROM_PAGE_SIZE;
+    let prg_ram_size = header[8] as usize * PRG_RAM_PAGE_SIZE;
     let version = ROM::get_ines_version(header);
-    
+    let region = match header[9] & 1 {
+      0 => Region::NSTC,
+      1 => Region::PAL,
+      _ => return Err("NES region unrecognizable".to_string()),
+    };
+
+    if header[6] & 2 == 2 {
+      return Err("Cartridge contains battery-backed RAM, which is unsupported".to_string());
+    }
+
+    if chr_rom_size == 0 {
+      warn!("ROM has no CHR_ROM, uses CHR_RAM instead, which is unsupported");
+      chr_ram_size = CHR_RAM_PAGE_SIZE; // Unsure if we need any more than one page of mem
+    }
+
     debug!("iNES Version: {:?}", version);
   
     if version != iNESVersion::iNES_1 {
@@ -77,9 +104,12 @@ impl ROM {
 
     let trainer_present = ROM::has_trainer(header);
 
-    debug!("Trainer is present: {trainer_present}");
+    if trainer_present {
+      warn!("ROM contains a 512 trainer, this will not be used and has no planned support.");
+    }
+    
     debug!("PRG ROM is 0x{:0X} bytes", prg_rom_size);
-    debug!("CHR ROM is 0x{:0X} bytes", prg_rom_size);
+    debug!("CHR ROM is 0x{:0X} bytes", chr_rom_size);
   
     let prg_rom_offset = HEADER_SIZE + if trainer_present { TRAINER_SIZE } else { 0 };
     let chr_rom_offset = prg_rom_offset + prg_rom_size;
@@ -90,8 +120,11 @@ impl ROM {
 
     Ok(ROM {
       name: name.to_string(),
+      region,
       prg_rom: byte_code[prg_rom_offset..(prg_rom_offset+prg_rom_size)].to_vec(),
+      prg_ram: vec![0x00; prg_ram_size],
       chr_rom: byte_code[chr_rom_offset..(chr_rom_offset+chr_rom_size)].to_vec(),
+      chr_ram: vec![0x00; chr_ram_size],
       mirroring,
       mapper
     })
@@ -143,13 +176,18 @@ impl ROM {
       return ScreenMirroring::FourScreen;
     }
 
-    if control_byte & 0b1 > 0 {
+    if control_byte & 1 > 0 {
       ScreenMirroring::Vertical
     } else {
       ScreenMirroring::Horizontal
     }
 
   }
+
+  fn has_chr_ram(&self) -> bool {
+    self.chr_rom.len() == 0
+  }
+
 }
 
 #[cfg(test)]
