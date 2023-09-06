@@ -16,10 +16,10 @@ pub struct NROM {
 
 impl NROM {
 
-  pub fn load(rom: &mut ROM, mirroring: ScreenMirroring) -> Mapper {
+  pub fn load(rom: &mut ROM) -> Mapper {
     
     let nrom = Self {
-      mirroring,
+      mirroring: rom.header.mirroring,
       mirror_prg_rom: rom.prg_rom.len() <= 0x4000,
     };
 
