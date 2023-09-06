@@ -4,6 +4,7 @@ pub mod instructions;
 pub mod rom;
 pub mod bus;
 pub mod gamepad;
+pub mod mappers;
 
 extern crate lazy_static;
 extern crate bitflags;

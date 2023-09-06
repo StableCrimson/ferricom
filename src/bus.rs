@@ -1,5 +1,6 @@
 use crate::{cpu::Mem, ppu::PPU};
 use crate::rom::ROM;
+use crate::mappers::Map;
 use crate::gamepad::Gamepad;
 use log::debug;
 
@@ -46,7 +47,7 @@ impl<'a> Bus<'a> {
   where 
       F: FnMut(&PPU, &mut Gamepad) + 'call {
     
-    let ppu = PPU::new(rom.chr_rom, rom.mirroring);
+    let ppu = PPU::new(rom.chr_rom, rom.mapper.mirroring());
     
     Bus {
       cpu_vram: [0; 2048],

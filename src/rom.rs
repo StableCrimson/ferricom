@@ -2,6 +2,9 @@ use std::fs;
 use std::path::Path;
 use log::{debug, warn};
 
+use crate::mappers::Mapper;
+use crate::mappers::nrom::NROM;
+
 const HEADER_SIZE: usize = 16;
 const TRAINER_SIZE: usize = 512;
 const PRG_ROM_PAGE_SIZE: usize = 16384;
@@ -42,8 +45,7 @@ pub struct ROM {
   pub prg_ram: Vec<u8>,
   pub chr_rom: Vec<u8>,
   pub chr_ram: Vec<u8>,
-  pub mirroring: ScreenMirroring,
-  pub mapper: u8
+  pub mapper: Mapper
 }
 
 impl ROM {
@@ -68,7 +70,6 @@ impl ROM {
       Err(msg) => return Err(msg)
     };
 
-    let mut has_chr_ram = false;
     let mut chr_ram_size = 0;
 
     let prg_rom_size = header[4] as usize * PRG_ROM_PAGE_SIZE;
@@ -99,8 +100,8 @@ impl ROM {
       warn!("WARNING: iNES V2 is not officially supported, but will work because of backwards compatibility with iNES V1");
     }
   
-    let mapper = header[7] & 0b1111_0000 | header[6] >> 4;
-    debug!("Mapper 0x{:0X}", mapper);
+    let mapper_id = header[7] & 0b1111_0000 | header[6] >> 4;
+    debug!("Mapper 0x{:0X}", mapper_id);
 
     let trainer_present = ROM::has_trainer(header);
 
@@ -118,17 +119,24 @@ impl ROM {
 
     debug!("Screen mapping: {:?}", mirroring);
 
-    Ok(ROM {
+    let mut rom = Self {
       name: name.to_string(),
       region,
       prg_rom: byte_code[prg_rom_offset..(prg_rom_offset+prg_rom_size)].to_vec(),
       prg_ram: vec![0x00; prg_ram_size],
       chr_rom: byte_code[chr_rom_offset..(chr_rom_offset+chr_rom_size)].to_vec(),
       chr_ram: vec![0x00; chr_ram_size],
-      mirroring,
-      mapper
-    })
+      mapper: Mapper::none()
+    };
+
+    let mapper = match mapper_id {
+      0 => NROM::load(&mut rom, mirroring),
+      _ => return Err(format!("Mapper {} not supported", mapper_id))
+    };
   
+    rom.mapper = mapper;
+    Ok(rom)
+
   }
 
   fn retrieve_and_verify_header(byte_code: &[u8]) -> Result<&[u8], String> {
@@ -198,7 +206,7 @@ pub mod tests {
   struct TestRom {
     header: Vec<u8>,
     trainer: Option<Vec<u8>>,
-    pgp_rom: Vec<u8>,
+    prg_rom: Vec<u8>,
     chr_rom: Vec<u8>,
   }
 
@@ -206,7 +214,7 @@ pub mod tests {
       let mut result = Vec::with_capacity(
           rom.header.len()
               + rom.trainer.as_ref().map_or(0, |t| t.len())
-              + rom.pgp_rom.len()
+              + rom.prg_rom.len()
               + rom.chr_rom.len(),
       );
 
@@ -214,7 +222,7 @@ pub mod tests {
       if let Some(t) = rom.trainer {
           result.extend(t);
       }
-      result.extend(&rom.pgp_rom);
+      result.extend(&rom.prg_rom);
       result.extend(&rom.chr_rom);
 
       result
@@ -223,10 +231,10 @@ pub mod tests {
   pub fn test_rom() -> ROM {
       let test_rom = create_rom(TestRom {
           header: vec![
-              0x4E, 0x45, 0x53, 0x1A, 0x02, 0x01, 0x31, 00, 00, 00, 00, 00, 00, 00, 00, 00,
+              0x4E, 0x45, 0x53, 0x1A, 0x02, 0x01, 0x01, 00, 00, 00, 00, 00, 00, 00, 00, 00,
           ],
           trainer: None,
-          pgp_rom: vec![1; 2 * PRG_ROM_PAGE_SIZE],
+          prg_rom: vec![1; 2 * PRG_ROM_PAGE_SIZE],
           chr_rom: vec![2; 1 * CHR_ROM_PAGE_SIZE],
       });
 
