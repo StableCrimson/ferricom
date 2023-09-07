@@ -13,8 +13,8 @@ use self::header::iNESHeader;
 const TRAINER_SIZE: usize = 512;
 const PRG_ROM_PAGE_SIZE: usize = 16384;
 const CHR_ROM_PAGE_SIZE: usize = 8192;
-const PRG_RAM_PAGE_SIZE: usize = 8192;
-const CHR_RAM_PAGE_SIZE: usize = 4096;
+const _PRG_RAM_PAGE_SIZE: usize = 8192;
+const _CHR_RAM_PAGE_SIZE: usize = 4096;
 
 /// `iNESVersion::Indeterminate` means that the file is either `iNES` 0.7 or `iNES` Archaic.
 /// Right now I do not dileniate between the two because ferricom currently only supports `iNES` 1.
@@ -74,14 +74,11 @@ impl ROM {
       Err(msg) => return Err(msg)
     };
 
-    let mut chr_ram_size = 0;
-
     let prg_rom_size = header.prg_rom_banks as usize * PRG_ROM_PAGE_SIZE;
     let chr_rom_size = header.chr_rom_banks as usize * CHR_ROM_PAGE_SIZE;
 
-    if chr_rom_size == 0 {
+    if header.chr_rom_banks == 0 {
       warn!("ROM has no CHR_ROM, uses CHR_RAM instead, which is unsupported");
-      chr_ram_size = CHR_RAM_PAGE_SIZE; // Unsure if we need any more than one page of mem
     }
 
     debug!("iNES Version: {:?}", header.ines_version);
@@ -126,11 +123,6 @@ impl ROM {
     Ok(rom)
 
   }
-
-  fn has_chr_ram(&self) -> bool {
-    self.chr_rom.len() == 0
-  }
-
 }
 
 #[cfg(test)]

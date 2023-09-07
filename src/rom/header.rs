@@ -7,9 +7,9 @@ pub struct iNESHeader {
   pub ines_version: iNESVersion,
   pub region: Region,
   pub mirroring: ScreenMirroring,
-  pub prg_rom_banks: u8,
-  pub chr_rom_banks: u8,
-  pub mapper_id: u8,
+  pub prg_rom_banks: u16,
+  pub chr_rom_banks: u16,
+  pub mapper_id: u16,
   pub has_trainer: bool,
   pub has_battery_backed_ram: bool,
 }
@@ -29,13 +29,21 @@ impl iNESHeader {
       _ => return Err("NES region unrecognizable".to_string()),
     };
 
+    // V1
     let has_battery_backed_ram = header[6] & 2 == 2;
     let ines_version = iNESHeader::get_ines_version(header);
     let mirroring = iNESHeader::get_screen_mirroring(header);
-    let mapper_id = header[7] & 0b1111_0000 | header[6] >> 4;
+    let mut mapper_id = (header[7] & 0b1111_0000 | header[6] >> 4) as u16;
     let has_trainer = header[6] & 0b100 != 0;
-    let prg_rom_banks = header[4];
-    let chr_rom_banks = header[5];
+    let mut prg_rom_banks = header[4] as u16;
+    let mut chr_rom_banks = header[5] as u16;
+
+    // Have to do some things differently with the iNES_2 header
+    if ines_version == iNESVersion::iNES_2 {
+      mapper_id |= ((header[8] & 0x0F) as u16) << 8;
+      prg_rom_banks |= ((header[9] & 0x0F) as u16) << 8;
+      chr_rom_banks |= ((header[9] & 0xF0) as u16) << 8;
+    }
 
     Ok(
       iNESHeader { 
