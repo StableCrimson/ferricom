@@ -1,5 +1,6 @@
 pub mod cpu;
 pub mod ppu;
+pub mod mem;
 pub mod instructions;
 pub mod rom;
 pub mod bus;
@@ -66,7 +67,6 @@ fn main() {
       }
     };
 
-    // info!("ROM is 0X{:0X} bytes in size", byte_code.len());
     info!("ROM successfully loaded!");
     info!("========================");
     info!("Program ROM: 0X{:0X} bytes", rom.prg_rom.len());

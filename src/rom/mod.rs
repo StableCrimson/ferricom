@@ -87,7 +87,7 @@ impl ROM {
       if header.ines_version != iNESVersion::iNES_2 {
         return Err("ROM must be either iNES_1 or iNES_2!".to_string());
       }
-      warn!("WARNING: iNES V2 is not officially supported, but will work because of backwards compatibility with iNES V1");
+      warn!("WARNING: iNES V2 is now functionally supported supported, but not all features may be present yet.");
     }
   
     debug!("Mapper 0x{:0X}", header.mapper_id);

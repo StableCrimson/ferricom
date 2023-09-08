@@ -5,6 +5,7 @@ pub mod render;
 
 use log::warn;
 
+use crate::mappers::{Mapper, Map};
 use crate::rom::ScreenMirroring;
 use crate::ppu::registers::address_register::AddressRegister;
 use crate::ppu::registers::control_register::ControlRegister;
@@ -21,11 +22,11 @@ const PALETTE_TABLE_END: u16 =    0x3FFF;
 
 pub struct PPU {
   pub chr_rom: Vec<u8>,
+  mapper: Mapper,
   palette_table: [u8; 32],
   oam_addr: u8,
   oam_data: [u8; 256],
   pub vram: [u8; 2048],
-  screen_mirroring: ScreenMirroring,
   addr: AddressRegister,
   control: ControlRegister,
   status: StatusRegister,
@@ -37,14 +38,14 @@ pub struct PPU {
 
 impl PPU {
 
-  pub fn new(chr_rom: Vec<u8>, screen_mirroring: ScreenMirroring) -> PPU {
+  pub fn new(chr_rom: Vec<u8>, mapper: Mapper) -> PPU {
     PPU {
       chr_rom,
+      mapper,
       palette_table: [0; 32],
       oam_addr: 0,
       oam_data: [0; 256],
       vram: [0; 2048],
-      screen_mirroring,
       addr: AddressRegister::new(),
       control: ControlRegister::new(),
       status: StatusRegister::new(),
@@ -197,7 +198,7 @@ impl PPU {
     let vram_index = mirrored_addr - 0x2000;
     let name_table = vram_index / 0x0400;
 
-    match (&self.screen_mirroring, name_table) {
+    match (self.mapper.mirroring(), name_table) {
       (ScreenMirroring::Vertical, 2) => vram_index - 0x0800,
       (ScreenMirroring::Vertical, 3) => vram_index - 0x0800,
       (ScreenMirroring::Horizontal, 1) => vram_index - 0x0400,
@@ -210,10 +211,12 @@ impl PPU {
 
 #[cfg(test)]
 pub mod test {
+    use crate::mappers::Empty;
+
     use super::*;
 
     pub fn new_empty_rom() -> PPU {
-      PPU::new(vec![0; 2048], ScreenMirroring::Horizontal)
+      PPU::new(vec![0; 2048], Mapper::Empty(Empty))
   }
 
     #[test]
@@ -306,7 +309,7 @@ pub mod test {
     //   [0x2800 a ] [0x2C00 b ]
     #[test]
     fn test_vram_vertical_mirror() {
-        let mut ppu = PPU::new(vec![0; 2048], ScreenMirroring::Vertical);
+        let mut ppu = PPU::new(vec![0; 2048], Mapper::Empty(Empty));
 
         ppu.write_to_ppu_address(0x20);
         ppu.write_to_ppu_address(0x05);
