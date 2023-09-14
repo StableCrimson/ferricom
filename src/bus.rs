@@ -1,3 +1,4 @@
+use crate::mappers::{Map, MappedRead};
 use crate::{mem::Mem, ppu::PPU};
 use crate::rom::ROM;
 use crate::gamepad::Gamepad;
@@ -34,40 +35,34 @@ const GAMEPAD_ADDRESS: u16 =          0x4016;
 pub struct Bus<'call> {
   cpu_vram: [u8; 2048],
   prg_rom: Vec<u8>,
+  prg_ram: Vec<u8>,
   pub ppu: PPU,
   gamepad: Gamepad,
   cycles: usize,
-  callback: Box<dyn FnMut(&PPU, &mut Gamepad) + 'call>,
+  callback: Box<dyn FnMut(&mut PPU, &mut Gamepad) + 'call>,
 }
 
 impl<'a> Bus<'a> {
 
   pub fn new<'call, F>(rom: ROM, callback: F) -> Bus<'call>
   where 
-      F: FnMut(&PPU, &mut Gamepad) + 'call {
+      F: FnMut(&mut PPU, &mut Gamepad) + 'call {
     
-    let ppu = PPU::new(rom.chr_rom, rom.mapper);
+    let mut ppu = PPU::new();
+    ppu.load_mapper(rom.mapper);
+    ppu.load_chr_ram(rom.chr_ram);
+    ppu.load_chr_rom(rom.chr_rom);
+    ppu.load_ex_ram(rom.ex_ram);
     
     Bus {
       cpu_vram: [0; 2048],
       prg_rom: rom.prg_rom,
+      prg_ram: rom.prg_ram,
       ppu,
       gamepad: Gamepad::new(),
       cycles: 0,
       callback: Box::from(callback)
     }
-  }
-
-  pub fn read_prg_rom(&self, mut addr: u16) -> u8 {
-
-    addr -= 0x8000;
-
-    if self.prg_rom.len() == 0x4000 && addr >= 0x4000 {
-      addr %= 0x4000;
-    }
-
-    self.prg_rom[addr as usize]
-
   }
 
   pub fn tick(&mut self) {
@@ -80,7 +75,7 @@ impl<'a> Bus<'a> {
 
     let frame = self.ppu.tick(cycles * 3);
     if frame {
-      (self.callback)(&self.ppu, &mut self.gamepad);
+      (self.callback)(&mut self.ppu, &mut self.gamepad);
     }
 
   }
@@ -100,24 +95,29 @@ impl Mem for Bus<'_> {
   fn mem_read_u8(&mut self, addr: u16) -> u8 {
     match addr {
       RAM_START..=RAM_MIRROR_END => {
-        let mirred_addr = addr & 0b0000_0111_1111_1111;
-        self.cpu_vram[mirred_addr as usize]
+        let mirrored_addr = addr & 0x7FF;
+        self.cpu_vram[mirrored_addr as usize]
       },
-      PPU_CONTROL_BYTE | PPU_MASK_REGISTER | PPU_OAM_ADDRESS_REGISTER | PPU_SCROLL_BYTE | PPU_ADDRESS_REGISTER | PPU_DMA_ADDRESS => {
+      PPU_CONTROL_BYTE | PPU_MASK_REGISTER | PPU_OAM_ADDRESS_REGISTER | PPU_SCROLL_BYTE | PPU_ADDRESS_REGISTER => {
         // error!("Attempted to read from write-only PPU address 0x{:0X}", addr);
         // panic!("Attempted to read from write-only PPU address 0x{:0X}", addr);
-        0
+        self.ppu.internal_data_buffer
       },
       PPU_STATUS_REGISTER => self.ppu.read_status(),
       PPU_OAM_DATA_REGISTER => self.ppu.read_oam_data(),
       PPU_DATA_REGISTER => self.ppu.read_data(),
       0x4000..=0x4015 => 0,
       0x2008..=PPU_REGISTER_MIRROR_END => {
-        let mirrored_addr = addr & 0b0010_0000_0000_0111;
+        let mirrored_addr = addr & 0x2007;
         self.mem_read_u8(mirrored_addr)
       },
-      ROM_SPACE_START..=ROM_SPACE_END => {
-        self.read_prg_rom(addr)
+      0x4020..=ROM_SPACE_END => {
+        match self.ppu.mapper.map_read(addr) {
+          MappedRead::Data(data) => data,
+          MappedRead::PrgRAM(addr) => self.prg_ram[addr as usize],
+          MappedRead::PrgROM(addr) => self.prg_rom[addr as usize],
+          _ => self.ppu.internal_data_buffer,
+        }
       },
       GAMEPAD_ADDRESS => self.gamepad.read(),
       _ => {
@@ -130,7 +130,7 @@ impl Mem for Bus<'_> {
   fn mem_write_u8(&mut self, addr: u16, data: u8) {
     match addr {
       RAM_START..=RAM_MIRROR_END => {
-        let mirrored_addr = addr & 0b0000_0111_1111_1111;
+        let mirrored_addr = addr & 0x7FF;
         self.cpu_vram[mirrored_addr as usize] = data;
       },
       PPU_CONTROL_BYTE => self.ppu.update_ctrl_register(data),
@@ -138,8 +138,10 @@ impl Mem for Bus<'_> {
       PPU_OAM_DATA_REGISTER => self.ppu.write_oam_data(data),
       PPU_ADDRESS_REGISTER => self.ppu.write_to_ppu_address(data),
       PPU_DATA_REGISTER => self.ppu.write_to_data_register(data),
+      PPU_MASK_REGISTER => self.ppu.write_to_mask_register(data),
+      PPU_STATUS_REGISTER => self.ppu.internal_data_buffer = data,
       0x2008..=PPU_REGISTER_MIRROR_END => {
-        let mirrored_addr = addr & 0b0010_0000_0000_0111;
+        let mirrored_addr = addr & 0x2007;
         self.mem_write_u8(mirrored_addr, data);
       },
       ROM_SPACE_START..=ROM_SPACE_END => {

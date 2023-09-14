@@ -103,8 +103,8 @@ fn main() {
     key_map.insert(Keycode::Return, JoypadButton::START);
     key_map.insert(Keycode::A, JoypadButton::BUTTON_A);
     key_map.insert(Keycode::S, JoypadButton::BUTTON_B);
-
-    let bus = Bus::new(rom, move |ppu: &PPU, gamepad: &mut Gamepad| {
+    
+    let bus = Bus::new(rom, move |ppu: &mut PPU, gamepad: &mut Gamepad| {
       render::render(ppu, &mut frame);
         texture.update(None, &frame.data, 256 * 3).unwrap();
 
@@ -120,9 +120,15 @@ fn main() {
               } => std::process::exit(0),
 
               Event::KeyDown { keycode, .. } => {
+
                 if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
                     gamepad.set_button_pressed_status(*key, true);
                 }
+
+                if keycode.unwrap() == Keycode::R {
+                  ppu.set_should_reset(true);
+                }
+
             }
             Event::KeyUp { keycode, .. } => {
                 if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
@@ -141,10 +147,8 @@ fn main() {
       warn!("Setting program counter to 0xC000. This is a feature for testing only, and is not intended for use when loading actual games.");
       cpu.pc = 0xC000;
       cpu.status = CPUFlags::from_bits_truncate(0x24);
-    } else {
-      cpu.reset();
     }
-
+    
     let _ = simple_logging::log_to_file("logs/cpu_trace.log", LevelFilter::Trace);
 
     cpu.run_with_callback(move |cpu| {

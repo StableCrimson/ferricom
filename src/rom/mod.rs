@@ -6,6 +6,7 @@ pub mod header;
 
 use crate::mappers::Mapper;
 use crate::mappers::nrom::NROM;
+use crate::mappers::txrom::TXROM;
 use crate::rom::header::HEADER_SIZE;
 
 use self::header::iNESHeader;
@@ -34,7 +35,8 @@ pub enum iNESVersion {
 pub enum ScreenMirroring {
   Horizontal,
   Vertical,
-  FourScreen
+  FourScreen,
+  Default,
 }
 
 pub enum Region {
@@ -50,6 +52,7 @@ pub struct ROM {
   pub prg_ram: Vec<u8>,
   pub chr_rom: Vec<u8>,
   pub chr_ram: Vec<u8>,
+  pub ex_ram: Vec<u8>,
 }
 
 impl ROM {
@@ -109,13 +112,15 @@ impl ROM {
       header,
       mapper: Mapper::none(),
       prg_rom: byte_code[prg_rom_offset..(prg_rom_offset+prg_rom_size)].to_vec(),
-      prg_ram: vec![0x00; 0],
+      prg_ram: vec![],
       chr_rom: byte_code[chr_rom_offset..(chr_rom_offset+chr_rom_size)].to_vec(),
-      chr_ram: vec![0x00; 0],
+      chr_ram: vec![],
+      ex_ram: vec![],
     };
 
     let mapper = match rom.header.mapper_id {
       0 => NROM::load(&mut rom),
+      4 => TXROM::load(&mut rom),
       _ => return Err(format!("Mapper {} not supported", rom.header.mapper_id))
     };
   
@@ -123,6 +128,11 @@ impl ROM {
     Ok(rom)
 
   }
+
+  pub fn has_chr_rom(&self) -> bool {
+    self.chr_rom.len() != 0
+  }
+
 }
 
 #[cfg(test)]

@@ -23,6 +23,11 @@ pub enum RegisterID {
     SP
 }
 
+pub enum ResetKind {
+    Soft,
+    Hard,
+}
+
 /// Represents each of the addressing modes the 6502 supports.
 /// This will be used to determine how the address for an operand will
 /// be retrieved or how an instruction behaves.
@@ -80,9 +85,9 @@ impl<'a> CPU<'a> {
     /// Create a new 6502 CPU in its default state,
     /// able to provide a custom `Bus` if you want to
     /// for some reason
-    pub fn new(bus: Bus<'_>) -> CPU<'_> {
+    pub fn new(mut bus: Bus<'_>) -> CPU<'_> {
         CPU {
-            pc: 0x0000,
+            pc: bus.mem_read_u16(0xFFFC),
             sp: 0xFD,
             acc: 0,
             x: 0,
@@ -93,13 +98,23 @@ impl<'a> CPU<'a> {
     }
 
     /// Sets the CPU to the default state
-    pub fn reset(&mut self) {
+    pub fn reset(&mut self, kind: ResetKind) {
+
         self.pc = self.mem_read_u16(0xFFFC);
-        self.sp = 0xFF;
-        self.acc = 0;
-        self.x = 0;
-        self.y = 0;
-        self.status = CPUFlags::from_bits_truncate(0);
+
+        match kind {
+            ResetKind::Soft => {
+                self.sp = self.sp.wrapping_sub(3);
+                self.status.insert(CPUFlags::INTERRUPT_DISABLE);
+            },
+            ResetKind::Hard => {
+                self.sp = 0xFD;
+                self.acc = 0;
+                self.x = 0;
+                self.y = 0;
+                self.status = CPUFlags::from_bits_truncate(0x24);
+            }
+        }
     }
 
     /// DEPRECATED?? Maybe only useful for testing??
@@ -108,7 +123,7 @@ impl<'a> CPU<'a> {
     /// while in a custom state, do not call this and instead set the state, call load(), then run()
     pub fn load_and_run(&mut self, program: Vec<u8>) {
         self.load(program);
-        // self.reset();
+        // self.reset(ResetKind::Hard);
         self.run();
     }
 
@@ -142,6 +157,11 @@ impl<'a> CPU<'a> {
         let ins_set = &(*instructions::CPU_INSTRUCTION_SET);
 
         loop {
+
+            if self.bus.ppu.should_reset() {
+                self.bus.ppu.set_should_reset(false);
+                self.reset(ResetKind::Soft);
+            }
 
             if let Some(_nmi) = self.bus.poll_nmi() {
                 self.interrupt(NMI);
@@ -837,7 +857,7 @@ mod tests {
 
         let cpu = init_test_cpu();
 
-        assert_eq!(cpu.pc, 0x0000);
+        assert_eq!(cpu.pc, 0x0101);
         assert_eq!(cpu.sp, 0xFD);
         assert_eq!(cpu.acc, 0);
         assert_eq!(cpu.x, 0);
@@ -858,14 +878,23 @@ mod tests {
         cpu.y = 16;
         cpu.status = CPUFlags::from_bits_truncate(0b10010000);
 
-        cpu.reset();
+        cpu.reset(ResetKind::Soft);
 
-        assert_eq!(cpu.pc, 0x0101);
-        assert_eq!(cpu.sp, 0xFF);
+        assert_eq!(cpu.pc, 0x101);
+        assert_eq!(cpu.sp, 121);
+        assert_eq!(cpu.acc, 52);
+        assert_eq!(cpu.x, 15);
+        assert_eq!(cpu.y, 16);
+        assert!(cpu.status.contains(CPUFlags::INTERRUPT_DISABLE));
+
+        cpu.reset(ResetKind::Hard);
+
+        assert_eq!(cpu.pc, 0x101);
+        assert_eq!(cpu.sp, 0xFD);
         assert_eq!(cpu.acc, 0);
         assert_eq!(cpu.x, 0);
         assert_eq!(cpu.y, 0);
-        assert_eq!(cpu.status.bits(), 0);
+        assert_eq!(cpu.status.bits(), 0x24);
 
     }
 
@@ -1181,7 +1210,7 @@ mod tests {
         assert_eq!(cpu.mem_read_u8(0x0601), 0b1010_1010);
         assert!(!cpu.status.contains(CPUFlags::CARRY));
 
-        cpu.reset();
+        cpu.reset(ResetKind::Hard);
         let program = vec![0xA9, 0b1010_1010, 0x0E, 0x01, 0x06];
         cpu.load_and_run(program);
 
@@ -1321,7 +1350,7 @@ mod tests {
 
         // Branch condition is NOT met
         let program = vec![0x10, 0b1111_1101];
-        cpu.reset();
+        cpu.reset(ResetKind::Hard);
         cpu.load(program);
         cpu.status.insert(CPUFlags::ZERO);
         cpu.run();
@@ -1565,7 +1594,7 @@ mod tests {
 
         let mut cpu = init_test_cpu();
         let program = vec![0x20, 0xEE, 0x00];
-        cpu.reset();
+        cpu.reset(ResetKind::Hard);
         cpu.load_and_run(program);
 
         // The reason that it's 0x00F0 is because
@@ -1573,7 +1602,7 @@ mod tests {
         // instruction which is BRK so the final state
         // is 0x00EF + 1
         assert_eq!(cpu.pc, 0x00EF);
-        assert_eq!(cpu.sp, 0xFD);
+        assert_eq!(cpu.sp, 0xFB);
         assert_eq!(cpu.stack_pop_u16(), 0x0602);
 
     }
@@ -1776,12 +1805,12 @@ mod tests {
         let mut cpu = init_test_cpu();
         let program = vec![0x48];
 
-        cpu.reset();
+        cpu.reset(ResetKind::Hard);
         cpu.load(program);
         cpu.acc = 0xFF;
         cpu.run();
 
-        assert_eq!(cpu.sp, 0xFE); // Byte has been pushed to stack
+        assert_eq!(cpu.sp, 0xFC); // Byte has been pushed to stack
         assert_eq!(cpu.stack_pop_u8(), 0xFF);
 
     }
@@ -1792,12 +1821,12 @@ mod tests {
         let mut cpu = init_test_cpu();
         let program = vec![0x08];
 
-        cpu.reset();
+        cpu.reset(ResetKind::Hard);
         cpu.load(program);
         cpu.status.insert(CPUFlags::OVERFLOW);
         cpu.run();
 
-        assert_eq!(cpu.sp, 0xFE); // Byte has been pushed to stack
+        assert_eq!(cpu.sp, 0xFC); // Byte has been pushed to stack
         assert!(cpu.status.contains(CPUFlags::OVERFLOW));
 
     }
@@ -1808,12 +1837,12 @@ mod tests {
         let mut cpu = init_test_cpu();
         let program = vec![0x48, 0xA9, 0x11, 0x68];
 
-        cpu.reset();
+        cpu.reset(ResetKind::Hard);
         cpu.load(program);
         cpu.acc = 0xFF;
         cpu.run();
 
-        assert_eq!(cpu.sp, 0xFF); // Byte has been popped from stack
+        assert_eq!(cpu.sp, 0xFD); // Byte has been popped from stack
         assert_eq!(cpu.acc, 0xFF);
         assert!(cpu.status.contains(CPUFlags::NEGATIVE));
 
@@ -1825,12 +1854,12 @@ mod tests {
         let mut cpu = init_test_cpu();
         let program = vec![0x08, 0x38, 0x28];
 
-        cpu.reset();
+        cpu.reset(ResetKind::Hard);
         cpu.load(program);
         cpu.status.insert(CPUFlags::OVERFLOW);
         cpu.run();
 
-        assert_eq!(cpu.sp, 0xFF); // Byte has been popped from stack
+        assert_eq!(cpu.sp, 0xFD); // Byte has been popped from stack
         assert!(cpu.status.contains(CPUFlags::OVERFLOW));
         assert!(!cpu.status.contains(CPUFlags::CARRY));
 
@@ -1846,7 +1875,7 @@ mod tests {
         assert_eq!(cpu.acc, 0b0101_0100);
         assert!(cpu.status.contains(CPUFlags::CARRY));
 
-        cpu.reset();
+        cpu.reset(ResetKind::Hard);
 
         let program = vec![0xA9, 0b0000_1111, 0x2A];
         cpu.load(program);
@@ -1870,7 +1899,7 @@ mod tests {
         assert_eq!(cpu.acc, 0b1010_1010);
         assert!(cpu.status.contains(CPUFlags::CARRY));
 
-        cpu.reset();
+        cpu.reset(ResetKind::Hard);
         let program = vec![0xA9, 0b0101_0100, 0x6A];
         cpu.load_and_run(program);
 
@@ -1944,14 +1973,14 @@ mod tests {
 
         let mut cpu = init_test_cpu();
         let program = vec![0x40];
-        cpu.reset();
+        cpu.reset(ResetKind::Hard);
         cpu.load(program);
         cpu.stack_push_u16(0x0F0F);
         cpu.stack_push_u8(0b1000_0001);
         cpu.run();
 
         assert_eq!(cpu.pc, 0x0F10);
-        assert_eq!(cpu.sp, 0xFF);
+        assert_eq!(cpu.sp, 0xFD);
         assert!(cpu.status.contains(CPUFlags::NEGATIVE));
         assert!(cpu.status.contains(CPUFlags::CARRY));
 
@@ -1962,13 +1991,13 @@ mod tests {
 
         let mut cpu = init_test_cpu();
         let program = vec![0x60, 0xEF, 0xFE];
-        cpu.reset();
+        cpu.reset(ResetKind::Hard);
         cpu.load(program);
         cpu.stack_push_u16(0x0602);
         cpu.run();
 
         assert_eq!(cpu.pc, 0x0604);
-        assert_eq!(cpu.sp, 0xFF); // Stack should be empty now
+        assert_eq!(cpu.sp, 0xFD); // Stack should be empty now
 
     }
 
@@ -1981,7 +2010,7 @@ mod tests {
 
         assert_eq!(cpu.acc, 0xE0);
 
-        cpu.reset();
+        cpu.reset(ResetKind::Hard);
         let program = vec![0xA9, 0x00, 0xE9, 0x01, 0x00];
         cpu.load_and_run(program);
 
