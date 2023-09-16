@@ -22,8 +22,8 @@ pub trait Mem {
 }
 
 pub struct Membank {
-  start: usize,
-  end: usize,
+  // start: usize,
+  // end: usize,
   size: usize,
   window: usize,
   shift: usize,
@@ -45,8 +45,8 @@ impl Membank {
     let page_count = max(1, capacity / window);
 
     Self {
-      start,
-      end,
+      // start,
+      // end,
       size,
       window,
       shift: window.trailing_zeros() as usize,
@@ -59,6 +59,15 @@ impl Membank {
 
   pub fn set(&mut self, slot: usize, bank: usize) {
     self.banks[slot] = (bank & self.mask) << self.shift;
+  }
+
+  pub fn set_range(&mut self, start: usize, end: usize, bank: usize) {
+    let mut new_addr = (bank & self.mask) << self.shift;
+    for slot in start..=end {
+        self.banks[slot] = new_addr;
+        debug_assert!(self.banks[slot] < self.page_count * self.window);
+        new_addr += self.window;
+    }
   }
 
   pub fn last(&self) -> usize {

@@ -44,7 +44,7 @@ impl Map for NROM {
       self.mirroring = _mirroring;
   }
 
-  fn map_read(&self, addr: u16) -> MappedRead {
+  fn map_read(&mut self, addr: u16) -> MappedRead {
     match addr {
       CHR_ROM_BANK_START..=CHR_ROM_BANK_END => MappedRead::Chr(addr.into()),
       PRG_RAM_START..=PRG_RAM_END => MappedRead::PrgRAM((addr & 0x1FFF).into()),
@@ -57,7 +57,7 @@ impl Map for NROM {
     }
   }
 
-  fn map_write(&self, addr: u16, data: u8) -> MappedWrite {
+  fn map_write(&mut self, addr: u16, data: u8) -> MappedWrite {
     match addr {
       CHR_ROM_BANK_START..=CHR_ROM_BANK_END => MappedWrite::Chr(addr.into(), data),
       PRG_RAM_START..=PRG_RAM_END => MappedWrite::PrgRAM((addr & 0x1FFF).into(), data),

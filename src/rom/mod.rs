@@ -130,7 +130,7 @@ impl ROM {
   }
 
   pub fn has_chr_rom(&self) -> bool {
-    self.chr_rom.len() != 0
+    self.chr_rom.is_empty()
   }
 
 }

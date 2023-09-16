@@ -32,6 +32,7 @@ const PPU_DMA_ADDRESS: u16 =          0x4014;
 
 const GAMEPAD_ADDRESS: u16 =          0x4016;
 
+#[allow(clippy::type_complexity)]
 pub struct Bus<'call> {
   cpu_vram: [u8; 2048],
   prg_rom: Vec<u8>,
@@ -114,8 +115,8 @@ impl Mem for Bus<'_> {
       0x4020..=ROM_SPACE_END => {
         match self.ppu.mapper.map_read(addr) {
           MappedRead::Data(data) => data,
-          MappedRead::PrgRAM(addr) => self.prg_ram[addr as usize],
-          MappedRead::PrgROM(addr) => self.prg_rom[addr as usize],
+          MappedRead::PrgRAM(addr) => self.prg_ram[addr],
+          MappedRead::PrgROM(addr) => self.prg_rom[addr],
           _ => self.ppu.internal_data_buffer,
         }
       },

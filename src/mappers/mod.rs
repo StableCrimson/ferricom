@@ -22,6 +22,7 @@ pub enum MappedWrite {
   PrgRAM(usize, u8),
 }
 
+#[allow(clippy::large_enum_variant)]
 #[enum_dispatch]
 pub enum Mapper {
   Empty,
@@ -43,9 +44,9 @@ pub trait Map {
 
   fn mirroring(&self) -> ScreenMirroring { ScreenMirroring::Default }
   fn set_mirroring(&mut self, _mirroring: ScreenMirroring) {}
-  fn map_read(&self, _addr: u16) -> MappedRead { self.map_peak(_addr) }
+  fn map_read(&mut self, _addr: u16) -> MappedRead { self.map_peak(_addr) }
   fn map_peak(&self, _addr: u16) -> MappedRead { MappedRead::None }
-  fn map_write(&self, _addr: u16, _data: u8) -> MappedWrite { MappedWrite::None }
+  fn map_write(&mut self, _addr: u16, _data: u8) -> MappedWrite { MappedWrite::None }
 
 }
 

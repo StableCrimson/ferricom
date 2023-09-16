@@ -42,6 +42,12 @@ pub struct PPU {
   nmi: Option<u8>,
 }
 
+impl Default for PPU {
+  fn default() -> Self {
+      Self::new()
+  }
+}
+
 impl PPU {
 
   pub fn new() -> PPU {
@@ -209,7 +215,7 @@ impl PPU {
 
         if !self.chr_ram.is_empty() {
           if let MappedWrite::Chr(target_addr, data) = self.mapper.map_write(target_addr, data) {
-            self.chr_ram[target_addr as usize] = data;
+            self.chr_ram[target_addr] = data;
           }
         }
         warn!("Attempted to write to character rom address space: 0x{:0X}", target_addr);
