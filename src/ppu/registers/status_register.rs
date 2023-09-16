@@ -1,6 +1,7 @@
 use bitflags::bitflags;
 
 bitflags!{
+  #[derive(Default)]
   pub struct StatusRegister: u8 {
     const NOTUSED          = 0b0000_0001;
     const NOTUSED2         = 0b0000_0010;

@@ -40,7 +40,6 @@ pub fn render(ppu: &PPU, frame: &mut Frame) {
     let tile_y = i / 32;
     let tile = &ppu.chr_rom[(bank+tile*16) as usize..=(bank+tile*16+15) as usize];
     let palette = bg_pallette(ppu, tile_x, tile_y);
-    // println!("{:0X}: {:0X}", i, ppu.vram[i]);
 
     for y in 0..=7 {
 
@@ -73,16 +72,8 @@ pub fn render(ppu: &PPU, frame: &mut Frame) {
     let tile_x = ppu.oam_data[i + 3] as usize;
     let tile_y = ppu.oam_data[i] as usize;
 
-    let flip_vertical = if ppu.oam_data[i + 2] >> 7 & 1 == 1 {
-        true
-    } else {
-        false
-    };
-    let flip_horizontal = if ppu.oam_data[i + 2] >> 6 & 1 == 1 {
-        true
-    } else {
-        false
-    };
+    let flip_vertical = ppu.oam_data[i + 2] >> 7 & 1 == 1;
+    let flip_horizontal = ppu.oam_data[i + 2] >> 6 & 1 == 1;
     let pallette_idx = ppu.oam_data[i + 2] & 0b11;
     let sprite_palette = sprite_palette(ppu, pallette_idx);
    
@@ -96,8 +87,8 @@ pub fn render(ppu: &PPU, frame: &mut Frame) {
       let mut lower = tile[y + 8];
       'ololo: for x in (0..=7).rev() {
         let value = (1 & lower) << 1 | (1 & upper);
-        upper = upper >> 1;
-        lower = lower >> 1;
+        upper >>= 1;
+        lower >>= 1;
         let rgb = match value {
           0 => continue 'ololo, // skip coloring the pixel
           1 => palette::SYSTEM_PALLETE[sprite_palette[1] as usize],
@@ -116,11 +107,11 @@ pub fn render(ppu: &PPU, frame: &mut Frame) {
   }
 }
 
-pub fn show_tile(chr_rom: &Vec<u8>, bank: usize, tile_num: usize) -> Frame {
+pub fn show_tile(chr_rom: &[u8], bank: usize, tile_num: usize) -> Frame {
 
   let mut frame = Frame::new();
-  let bank = (bank * 0x1000) as usize;
-
+  let bank = bank * 0x1000;
+  
   let tile = &chr_rom[(bank+tile_num*16)..=(bank+tile_num*16+15)];
 
   for y in 0..=7 {
@@ -150,11 +141,11 @@ pub fn show_tile(chr_rom: &Vec<u8>, bank: usize, tile_num: usize) -> Frame {
   frame
 }
 
-pub fn show_tile_bank(chr_rom: &Vec<u8>, bank: usize) -> Frame {
+pub fn show_tile_bank(chr_rom: &[u8], bank: usize) -> Frame {
   let mut frame = Frame::new();
     let mut tile_y = 0;
     let mut tile_x = 0;
-    let bank = (bank * 0x1000) as usize;
+    let bank = bank * 0x1000;
 
     for tile_n in 0..255 {
         if tile_n != 0 && tile_n % 20 == 0 {
@@ -169,14 +160,14 @@ pub fn show_tile_bank(chr_rom: &Vec<u8>, bank: usize) -> Frame {
 
             for x in (0..=7).rev() {
                 let value = (1 & upper) << 1 | (1 & lower);
-                upper = upper >> 1;
-                lower = lower >> 1;
+                upper >>= 1;
+                lower >>= 1;
                 let rgb = match value {
                     0 => palette::SYSTEM_PALLETE[0x01],
                     1 => palette::SYSTEM_PALLETE[0x23],
                     2 => palette::SYSTEM_PALLETE[0x27],
                     3 => palette::SYSTEM_PALLETE[0x30],
-                    _ => panic!("can't be"),
+                    _ => unreachable!("You shouldn't be here!"),
                 };
                 frame.set_pixel(tile_x + x, tile_y + y, rgb)
             }

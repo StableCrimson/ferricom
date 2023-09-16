@@ -1,9 +1,11 @@
 pub mod cpu;
 pub mod ppu;
+pub mod mem;
 pub mod instructions;
 pub mod rom;
 pub mod bus;
 pub mod gamepad;
+pub mod mappers;
 
 extern crate lazy_static;
 extern crate bitflags;
@@ -18,10 +20,10 @@ use rom::ROM;
 use gamepad::Gamepad;
 use gamepad::gamepad_register::JoypadButton;
 
-use std::fs;
 use log::{LevelFilter, info, warn, error, trace};
 use clap::Parser;
 use std::collections::HashMap;
+use std::path::PathBuf;
 use sdl2::{pixels::PixelFormatEnum, event::Event, keyboard::Keycode};
 
 #[derive(Parser, Debug)]
@@ -29,7 +31,7 @@ use sdl2::{pixels::PixelFormatEnum, event::Event, keyboard::Keycode};
 pub struct Arguments {
 
   /// Path to the ROM file to load, ending in `.nes`
-  rom_file: String,
+  rom_file: PathBuf,
 
   /// Enable generating a tracelog of the CPU.
   /// Will be found in `./logs/cpu_trace.log`
@@ -52,30 +54,26 @@ fn main() {
     let args = Arguments::parse();
 
     let file_path = &args.rom_file;
-    info!("Target ROM: {}", file_path);
+    info!("Target ROM: {}", file_path.to_string_lossy());
 
     let cpu_tracing_enabled = args.cpu_tracelog;
     let nestest_ppu_disabled = args.disable_nestest_ppu_output;
 
-    let byte_code = match fs::read(file_path) {
-        Ok(byte_code) => byte_code,
-        Err(_) => {
-            let msg = format!("Unable to read ROM \"{file_path}\"");
-            error!("{msg}");
-            panic!("{msg}")
-        },
+    let rom = match ROM::from_path(file_path) {
+      Ok(rom) => rom,
+      Err(msg) => {
+        error!("{msg}");
+        panic!("{msg}");
+      }
     };
 
-    let rom = ROM::new(&byte_code);
-
-    info!("ROM is 0X{:0X} bytes in size", byte_code.len());
     info!("ROM successfully loaded!");
     info!("========================");
     info!("Program ROM: 0X{:0X} bytes", rom.prg_rom.len());
+    info!("Program RAM: 0X{:0X} bytes", rom.prg_ram.len());
     info!("Character ROM: 0X{:0X} bytes", rom.chr_rom.len());
 
-    let game_name = *file_path.split('/').collect::<Vec<_>>().last().unwrap();
-    let window_title = format!("ferricom v0.1.0 EXPERIMENTAL | {}", game_name);
+    let window_title = format!("ferricom v0.1.0 EXPERIMENTAL | {}", rom.name);
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -105,8 +103,8 @@ fn main() {
     key_map.insert(Keycode::Return, JoypadButton::START);
     key_map.insert(Keycode::A, JoypadButton::BUTTON_A);
     key_map.insert(Keycode::S, JoypadButton::BUTTON_B);
-
-    let bus = Bus::new(rom, move |ppu: &PPU, gamepad: &mut Gamepad| {
+    
+    let bus = Bus::new(rom, move |ppu: &mut PPU, gamepad: &mut Gamepad| {
       render::render(ppu, &mut frame);
         texture.update(None, &frame.data, 256 * 3).unwrap();
 
@@ -122,9 +120,15 @@ fn main() {
               } => std::process::exit(0),
 
               Event::KeyDown { keycode, .. } => {
+
                 if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
                     gamepad.set_button_pressed_status(*key, true);
                 }
+
+                if keycode.unwrap() == Keycode::R {
+                  ppu.set_should_reset(true);
+                }
+
             }
             Event::KeyUp { keycode, .. } => {
                 if let Some(key) = key_map.get(&keycode.unwrap_or(Keycode::Ampersand)) {
@@ -143,10 +147,8 @@ fn main() {
       warn!("Setting program counter to 0xC000. This is a feature for testing only, and is not intended for use when loading actual games.");
       cpu.pc = 0xC000;
       cpu.status = CPUFlags::from_bits_truncate(0x24);
-    } else {
-      cpu.reset();
     }
-
+    
     let _ = simple_logging::log_to_file("logs/cpu_trace.log", LevelFilter::Trace);
 
     cpu.run_with_callback(move |cpu| {

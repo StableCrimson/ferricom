@@ -67,19 +67,19 @@ lazy_static! {
     Instruction::new(0x65, "ADC", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0x75, "ADC", 2, 4, AddressingMode::ZeroPageX),
     Instruction::new(0x6D, "ADC", 3, 4, AddressingMode::Absolute),
-    Instruction::new(0x7D, "ADC", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x7D, "ADC", 3, 4, AddressingMode::AbsoluteX),
     Instruction::new(0x79, "ADC", 3, 4, AddressingMode::AbsoluteY),
-    Instruction::new(0x61, "ADC", 2, 6, AddressingMode::IndirectX), // TODO: +1 cpu cycle if page is crossed
-    Instruction::new(0x71, "ADC", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x61, "ADC", 2, 6, AddressingMode::IndirectX),
+    Instruction::new(0x71, "ADC", 2, 5, AddressingMode::IndirectY),
 
     Instruction::new(0x29, "AND", 2, 2, AddressingMode::Immediate),
     Instruction::new(0x25, "AND", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0x35, "AND", 2, 4, AddressingMode::ZeroPageX),
     Instruction::new(0x2D, "AND", 3, 4, AddressingMode::Absolute),
-    Instruction::new(0x3D, "AND", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
-    Instruction::new(0x39, "AND", 3, 4, AddressingMode::AbsoluteY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x3D, "AND", 3, 4, AddressingMode::AbsoluteX),
+    Instruction::new(0x39, "AND", 3, 4, AddressingMode::AbsoluteY),
     Instruction::new(0x21, "AND", 2, 6, AddressingMode::IndirectX),
-    Instruction::new(0x31, "AND", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x31, "AND", 2, 5, AddressingMode::IndirectY),
 
     Instruction::new(0x0A, "ASL", 1, 2, AddressingMode::None),
     Instruction::new(0x06, "ASL", 2, 5, AddressingMode::ZeroPage),
@@ -87,14 +87,14 @@ lazy_static! {
     Instruction::new(0x0E, "ASL", 3, 6, AddressingMode::Absolute),
     Instruction::new(0x1E, "ASL", 3, 7, AddressingMode::AbsoluteX),
 
-    Instruction::new(0x90, "BCC", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
-    Instruction::new(0xB0, "BCS", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
-    Instruction::new(0xF0, "BEQ", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
-    Instruction::new(0xD0, "BNE", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
-    Instruction::new(0x30, "BMI", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
-    Instruction::new(0x10, "BPL", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
-    Instruction::new(0x50, "BVC", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
-    Instruction::new(0x70, "BVS", 2, 2, AddressingMode::Relative), // TODO: +1 CPU cycle if branch true, +2 if branching to a new page
+    Instruction::new(0x90, "BCC", 2, 2, AddressingMode::Relative),
+    Instruction::new(0xB0, "BCS", 2, 2, AddressingMode::Relative),
+    Instruction::new(0xF0, "BEQ", 2, 2, AddressingMode::Relative),
+    Instruction::new(0xD0, "BNE", 2, 2, AddressingMode::Relative),
+    Instruction::new(0x30, "BMI", 2, 2, AddressingMode::Relative),
+    Instruction::new(0x10, "BPL", 2, 2, AddressingMode::Relative),
+    Instruction::new(0x50, "BVC", 2, 2, AddressingMode::Relative),
+    Instruction::new(0x70, "BVS", 2, 2, AddressingMode::Relative),
 
     Instruction::new(0x24, "BIT", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0x2C, "BIT", 3, 4, AddressingMode::Absolute),
@@ -110,10 +110,10 @@ lazy_static! {
     Instruction::new(0xC5, "CMP", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0xD5, "CMP", 2, 4, AddressingMode::ZeroPageX),
     Instruction::new(0xCD, "CMP", 3, 4, AddressingMode::Absolute),
-    Instruction::new(0xDD, "CMP", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
-    Instruction::new(0xD9, "CMP", 3, 4, AddressingMode::AbsoluteY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xDD, "CMP", 3, 4, AddressingMode::AbsoluteX),
+    Instruction::new(0xD9, "CMP", 3, 4, AddressingMode::AbsoluteY),
     Instruction::new(0xC1, "CMP", 2, 6, AddressingMode::IndirectX),
-    Instruction::new(0xD1, "CMP", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xD1, "CMP", 2, 5, AddressingMode::IndirectY),
 
     Instruction::new(0xE0, "CPX", 2, 2, AddressingMode::Immediate),
     Instruction::new(0xE4, "CPX", 2, 3, AddressingMode::ZeroPage),
@@ -143,10 +143,10 @@ lazy_static! {
     Instruction::new(0x45, "EOR", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0x55, "EOR", 2, 4, AddressingMode::ZeroPageX),
     Instruction::new(0x4D, "EOR", 3, 4, AddressingMode::Absolute),
-    Instruction::new(0x5D, "EOR", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x5D, "EOR", 3, 4, AddressingMode::AbsoluteX),
     Instruction::new(0x59, "EOR", 3, 4, AddressingMode::AbsoluteY),
-    Instruction::new(0x41, "EOR", 2, 6, AddressingMode::IndirectX), // TODO: +1 cpu cycle if page is crossed
-    Instruction::new(0x51, "EOR", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x41, "EOR", 2, 6, AddressingMode::IndirectX),
+    Instruction::new(0x51, "EOR", 2, 5, AddressingMode::IndirectY),
 
     Instruction::new(0xE6, "INC", 2, 5, AddressingMode::ZeroPage),
     Instruction::new(0xF6, "INC", 2, 6, AddressingMode::ZeroPageX),
@@ -236,10 +236,10 @@ lazy_static! {
     Instruction::new(0x05, "ORA", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0x15, "ORA", 2, 4, AddressingMode::ZeroPageX),
     Instruction::new(0x0D, "ORA", 3, 4, AddressingMode::Absolute),
-    Instruction::new(0x1D, "ORA", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
-    Instruction::new(0x19, "ORA", 3, 4, AddressingMode::AbsoluteY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x1D, "ORA", 3, 4, AddressingMode::AbsoluteX),
+    Instruction::new(0x19, "ORA", 3, 4, AddressingMode::AbsoluteY),
     Instruction::new(0x01, "ORA", 2, 6, AddressingMode::IndirectX),
-    Instruction::new(0x11, "ORA", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0x11, "ORA", 2, 5, AddressingMode::IndirectY),
 
     Instruction::new(0x48, "PHA", 1, 3, AddressingMode::Implied),
     Instruction::new(0x08, "PHP", 1, 3, AddressingMode::Implied),
@@ -287,10 +287,10 @@ lazy_static! {
     Instruction::new(0xE5, "SBC", 2, 3, AddressingMode::ZeroPage),
     Instruction::new(0xF5, "SBC", 2, 4, AddressingMode::ZeroPageX),
     Instruction::new(0xED, "SBC", 3, 4, AddressingMode::Absolute),
-    Instruction::new(0xFD, "SBC", 3, 4, AddressingMode::AbsoluteX), // TODO: +1 cpu cycle if page is crossed
-    Instruction::new(0xF9, "SBC", 3, 4, AddressingMode::AbsoluteY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xFD, "SBC", 3, 4, AddressingMode::AbsoluteX),
+    Instruction::new(0xF9, "SBC", 3, 4, AddressingMode::AbsoluteY),
     Instruction::new(0xE1, "SBC", 2, 6, AddressingMode::IndirectX),
-    Instruction::new(0xF1, "SBC", 2, 5, AddressingMode::IndirectY), // TODO: +1 cpu cycle if page is crossed
+    Instruction::new(0xF1, "SBC", 2, 5, AddressingMode::IndirectY),
 
     Instruction::new(0xEB, "*SBC", 2, 2, AddressingMode::Immediate), // ! Illegal
 
