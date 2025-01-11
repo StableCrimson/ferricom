@@ -8,11 +8,11 @@ readme = "README.md"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bitflags = "2.4.0"
-clap = { version = "4.4.0", features = ["derive"] }
-enum_dispatch = "0.3.12"
-lazy_static = "*"
-log = "0.4.20"
+bitflags = "2.7.0"
+clap = { version = "4.5.26", features = ["derive"] }
+enum_dispatch = "0.3.13"
+lazy_static = "1.5.0"
+log = "0.4.24"
 rand = "0.8.5"
-sdl2 = "0.35.2"
+sdl2 = "0.37.0"
 simple-logging = "2.0.2"
