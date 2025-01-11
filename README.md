@@ -31,7 +31,7 @@ If this project helps you write your own emulator or learn Rust, then even bette
 - [x] Stack implemented
 - [x] Detecting if a page is crossed
 - [x] Branching instructions
-- [ ] Extra cycle on crossed page for certain instructions
+- [x] Extra cycle on crossed page for certain instructions
 - [x] Logging (Needed at this stage for test ROMs)
 - [ ] Cycle accuracy tests
 - [ ] Passes test ROMs (Instruction set)
