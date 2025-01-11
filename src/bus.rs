@@ -43,7 +43,7 @@ pub struct Bus<'call> {
   callback: Box<dyn FnMut(&mut PPU, &mut Gamepad) + 'call>,
 }
 
-impl<'a> Bus<'a> {
+impl Bus<'_> {
 
   pub fn new<'call, F>(rom: ROM, callback: F) -> Bus<'call>
   where 

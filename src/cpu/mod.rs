@@ -80,7 +80,7 @@ impl Mem for CPU<'_> {
 
 }
 
-impl<'a> CPU<'a> {
+impl CPU<'_> {
 
     /// Create a new 6502 CPU in its default state,
     /// able to provide a custom `Bus` if you want to
