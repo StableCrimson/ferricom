@@ -1,3 +1,4 @@
+#[derive(Default)]
 pub struct AddressRegister {
   value: (u8, u8),
   hi_ptr: bool
@@ -52,6 +53,48 @@ impl AddressRegister {
 
   pub fn reset_latch(&mut self) {
     self.hi_ptr = true;
+  }
+
+}
+
+#[cfg(test)]
+mod tests {
+
+  use super::*;
+
+  #[test]
+  fn test_set() {
+
+    let mut reg = AddressRegister::default();
+    let data = 0xFFAA;
+
+    reg.set(data);
+    assert_eq!(reg.value.0, 0xFF);
+    assert_eq!(reg.value.1, 0xAA);
+
+  }
+
+  #[test]
+  fn test_write_hi_ptr_behavior() {
+
+    let mut reg = AddressRegister::default();
+    
+    reg.update(0xFF);
+    assert_eq!(reg.value.1, 0xFF);
+    assert!(reg.hi_ptr);
+
+    // Mirrored down
+    reg.update(0xAB);
+    assert_eq!(reg.value.0, 0x2B);
+    assert!(!reg.hi_ptr);
+
+  }
+
+  #[test]
+  fn test_reset_latch() {
+    let mut reg = AddressRegister::default();
+    reg.reset_latch();
+    assert!(reg.hi_ptr)
   }
 
 }

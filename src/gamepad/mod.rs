@@ -2,6 +2,7 @@ pub mod gamepad_register;
 
 use gamepad_register::JoypadButton;
 
+#[derive(Default)]
 pub struct Gamepad {
   strobe: bool,
   button_index: u8,
@@ -9,7 +10,6 @@ pub struct Gamepad {
 }
 
 impl Gamepad {
-
 
   pub fn new() -> Self {
     Gamepad {

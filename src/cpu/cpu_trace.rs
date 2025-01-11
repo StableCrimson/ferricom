@@ -1,17 +1,16 @@
-use std::collections::HashMap;
 use log::error;
 
 use crate::cpu::{CPU, Mem, AddressingMode};
-use crate::instructions::{Instruction, CPU_INSTRUCTION_SET};
+use crate::instructions::CPU_INSTRUCTION_SET;
 
 pub fn trace(cpu: &mut CPU) -> String {
         
-  let opcodes: &HashMap<u8, &'static Instruction> = &CPU_INSTRUCTION_SET;
+  let opcodes = &CPU_INSTRUCTION_SET;
 
   // TODO: Remove the match statement once all 256 opcodes are implemented
   let code = cpu.mem_read_u8(cpu.pc);
   let opcode = match opcodes.get(&code) {
-    Some(ins) => ins,
+    Some(ins) => *ins,
     None => {
         error!("Instruction 0x{:0X} is invalid or unimplemented", code);
         panic!("Instruction 0x{:0X} is invalid or unimplemented", code);
@@ -169,15 +168,15 @@ mod test {
            result.push(trace(cpu));
        });
        assert_eq!(
-           "0064  A2 01     LDX #$01                        A:01 X:02 Y:03 P:24 SP:FD CYC:7",
+           "0064  A2 01     LDX #$01                        A:01 X:02 Y:03 P:24 SP:FD PPU:  0,  0 CYC:0",
            result[0]
        );
        assert_eq!(
-           "0066  CA        DEX                             A:01 X:01 Y:03 P:24 SP:FD CYC:9",
+           "0066  CA        DEX                             A:01 X:01 Y:03 P:24 SP:FD PPU:  0,  6 CYC:2",
            result[1]
        );
        assert_eq!(
-           "0067  88        DEY                             A:01 X:00 Y:03 P:26 SP:FD CYC:11",
+           "0067  88        DEY                             A:01 X:00 Y:03 P:26 SP:FD PPU:  0, 12 CYC:4",
            result[2]
        );
    }
@@ -205,7 +204,7 @@ mod test {
            result.push(trace(cpu));
        });
        assert_eq!(
-           "0064  11 33     ORA ($33),Y = 0400 @ 0400 = AA  A:00 X:00 Y:00 P:24 SP:FD CYC:7",
+           "0064  11 33     ORA ($33),Y = 0400 @ 0400 = AA  A:00 X:00 Y:00 P:24 SP:FD PPU:  0,  0 CYC:0",
            result[0]
        );
    }
